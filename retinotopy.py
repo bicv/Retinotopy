@@ -158,15 +158,15 @@ def charge_model(model_path):
 
 
 
-data_set_type = 'focus' # Select your root between : 'boxes', 'focus', 'full'
+# data_set_type = 'focus' # Select your root between : 'boxes', 'focus', 'full'
 
 @dataclass
 class Params:    
     datetag: str = datetag # Set the date of the result's file
     loader: str = f'{DATAROOT}/Imagenet_urls_ILSVRC_2016.json' # File containing Imagenet's labels
-    annotations: str = f'{DATAROOT}/animal_10k/ap-10k/annotations/clean_annotations.json' # File containing Imagenet's labels
+    # annotations: str = f'{DATAROOT}/animal_10k/ap-10k/annotations/clean_annotations.json' # File containing Imagenet's labels
 
-    root: str = f'{DATAROOT}/Imagenet_{data_set_type}' # Directory containing images to perform the training
+    # root: str = f'{DATAROOT}/Imagenet_{data_set_type}' # Directory containing images to perform the training
     folders: list = field(default_factory=lambda: ['val', 'train']) # Set the training and validation folders relative to the root
     
     image_size: int = 224 #
@@ -181,7 +181,7 @@ class Params:
     rs_min: float = 0.05
     rs_max: float = -4.95
     do_polar: bool = True
-    do_rottrain: bool = True
+    do_rotation: bool = False
     
     torch.manual_seed(seed)
     
@@ -194,7 +194,7 @@ with open(json_fname, 'wt') as f:
 
 
 #DCCN training
-annotations = json.load(open(args.annotations) ) 
+# annotations = json.load(open(args.annotations) ) 
 
 with open(args.loader) as json_file:
     Imagenet_urls_ILSVRC_2016 = json.load(json_file)
@@ -263,10 +263,10 @@ def get_grid(args, endpoint=False):
     return torch.stack((grid_xs, grid_ys), 2)
 
 
-def to_retino_tens(images, grid): 
-    grid = grid.repeat(images.shape[0],1,1,1)
-    return nnf.grid_sample(images, grid, 
-                           padding_mode="border", align_corners=False).squeeze(dim=0)
+# def to_retino_tens(images, grid): 
+#     grid = grid.repeat(images.shape[0],1,1,1)
+#     return nnf.grid_sample(images, grid, 
+#                            padding_mode="border", align_corners=False).squeeze(dim=0)
 
 
 
@@ -294,8 +294,13 @@ class ApplyMask:
     
 
 # Resnet 101 datasets initialisation
-def datasets_transforms(args, im_mean=im_mean, im_std=im_std,
-                        num_workers=num_workers, pin_memory=True, verbose=True):
+def datasets_transforms(args, im_mean=im_mean, im_std=im_std, angle_min=-180, angle_max=180,
+                        num_workers=num_workers, pin_memory=True, shuffle=True, verbose=True):
+    """
+    
+    
+    if angle is not note, applies a random rotation
+    """
 
  
     grid = get_grid(args)
@@ -311,8 +316,8 @@ def datasets_transforms(args, im_mean=im_mean, im_std=im_std,
             T.ToDtype(torch.float32, scale=True),  # Normalize expects float input
             # T.Resize(int(args.image_size), interpolation=interpolation, antialias=True),
         ]   
-        if args.do_rottrain:
-            if folder=='train': transforms.append(T.RandomRotation(degrees=180, expand=False))
+        if args.do_rotation:
+            transforms.append(T.RandomRotation(degrees=(angle_min, angle_max), interpolation=interpolation, expand=False))
         if args.do_polar: 
             transforms.append(to_log_polar_tens(grid))
         else:
@@ -328,7 +333,7 @@ def datasets_transforms(args, im_mean=im_mean, im_std=im_std,
         dataloaders[folder] = torch.utils.data.DataLoader(
                                 image_dataset, 
                                 batch_size=args.batch_size if folder=='train' else args.batch_size_val,
-                                shuffle=True, num_workers=num_workers, pin_memory=pin_memory
+                                shuffle=shuffle, num_workers=num_workers, pin_memory=pin_memory
                         )
         if verbose: 
             print(f"Loaded {len(image_dataset)} images under {folder}")  
