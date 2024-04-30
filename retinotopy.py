@@ -45,9 +45,6 @@ import os
 import requests
 import time
 
-import platform
-print('Welcome on', platform.platform())
-
 # to store results
 import pandas as pd
 
@@ -68,7 +65,6 @@ import torchvision
 # from torchvision.datasets import ImageFolder
 from torchvision.transforms import v2 as T
 import torch.nn as nn
-torch.manual_seed(42*42)
 torch.set_printoptions(precision=3, linewidth=140, sci_mode=False)
 
 data_cache = 'cached_data'
@@ -160,7 +156,10 @@ def charge_model(model_path):
 # data_set_type = 'focus' # Select your root between : 'boxes', 'focus', 'full'
 
 @dataclass
-class Params:    
+class Params:
+    import platform
+    print('Welcome on', platform.platform())
+
     datetag: str = datetag # Set the date of the result's file
     loader: str = f'{DATAROOT}/Imagenet_urls_ILSVRC_2016.json' # File containing Imagenet's labels
     # annotations: str = f'{DATAROOT}/animal_10k/ap-10k/annotations/clean_annotations.json' # File containing Imagenet's labels
@@ -295,20 +294,23 @@ class ApplyMask:
 # Resnet 101 datasets initialisation
 def get_transforms(args, im_mean=im_mean, im_std=im_std, angle_min=-180, angle_max=180):
 
+    grid = get_grid(args)
+    mask = make_mask(args.image_size)
+
     transforms = [                
         T.ToImage(),  # Convert to tensor, only needed if you had a PIL image
         #T.ToImageTensor(),
         T.ToDtype(torch.float32, scale=True),  # Normalize expects float input
-        # T.Resize(int(args.image_size), interpolation=interpolation, antialias=True),
     ]   
     if args.do_rotation:
         transforms.append(T.RandomRotation(degrees=(angle_min, angle_max), interpolation=interpolation, expand=False))
     if args.do_polar: 
         transforms.append(to_log_polar_tens(grid))
     else:
-        transforms.append(T.Resize((int(args.image_size), int(args.image_size)), interpolation=interpolation, antialias=True))
-        #transforms.append(T.CenterCrop((int(args.image_size), int(args.image_size))))
+        transforms.append(T.Resize(int(args.image_size), interpolation=interpolation, antialias=True))
+        transforms.append(T.CenterCrop((int(args.image_size), int(args.image_size))))
         transforms.append(ApplyMask(mask))
+
     transforms.append(T.Normalize(mean=im_mean, std=im_std)) # to normalize colors on the imagenet dataset
     
     return T.Compose(transforms)
@@ -322,14 +324,11 @@ def datasets_transforms(args, im_mean=im_mean, im_std=im_std, angle_min=-180, an
     """
 
  
-    grid = get_grid(args)
-    mask = make_mask(args.image_size)
-
     dataloaders = {}
     
     for folder in args.folders:
 
-        data_transform = get_transforms(args, im_mean=im_mean, im_std=im_std, angle_min=-180, angle_max=180)
+        data_transform = get_transforms(args, im_mean=im_mean, im_std=im_std, angle_min=angle_min, angle_max=angle_max)
 
         path = os.path.join(args.root, folder) # data path
         image_dataset = torchvision.datasets.ImageFolder(path, transform=data_transform) # load the data
