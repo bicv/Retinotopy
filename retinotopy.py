@@ -56,7 +56,7 @@ from dataclasses import dataclass, asdict, field
 
 import os
 HOST = os.uname()[1]
-print(HOST)
+print(f'{HOST=}')
 
 def touch(fname): open(fname, 'w').close()
 
@@ -64,13 +64,12 @@ def touch(fname): open(fname, 'w').close()
 import torch
 import torch.nn.functional as nnf
 import torchvision
-from torchvision import datasets, models, transforms
-from torchvision.datasets import ImageFolder
+# from torchvision import datasets, models, transforms
+# from torchvision.datasets import ImageFolder
 from torchvision.transforms import v2 as T
 import torch.nn as nn
 torch.manual_seed(42*42)
 torch.set_printoptions(precision=3, linewidth=140, sci_mode=False)
-
 
 data_cache = 'cached_data'
 interpolation = T.InterpolationMode.BILINEAR
@@ -95,7 +94,8 @@ elif HOST in ['neo-ope-de04']: # Darwin
     DATAROOT = '/data/JNJER/Deep_learning/data'
     num_workers = 16
 elif 'obiwan' in HOST: 
-    DATAROOT = '/Volumes/UnaTera/2023_archives/2023_science/JNJER_PhD/data'
+    # DATAROOT = '/Volumes/UnaTera/2023_archives/2023_science/JNJER_PhD/data'
+    DATAROOT = '/Volumes/SSD1TO/ImageNet'
     interpolation = T.InterpolationMode.NEAREST
     num_workers = 4
 elif 'Ahsoka' in HOST: 
@@ -139,7 +139,6 @@ def make_padding_circular_again(model_retrain):
     return model_retrain
 
 
-
 def charge_model(model_path):
     if 'resnet50' in model_path:
         model = torchvision.models.resnet50(weights=torchvision.models.ResNet50_Weights.DEFAULT)
@@ -152,7 +151,7 @@ def charge_model(model_path):
         #model = torchvision.models.resnet152(weights=torchvision.models.ResNet152_Weights.DEFAULT)
 
     print(f'loading .... {model_path}')
-    model.load_state_dict(torch.load(model_path))
+    model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
     # isolate the feature blocks
     return make_padding_circular_again(model)
 
@@ -170,7 +169,7 @@ class Params:
     folders: list = field(default_factory=lambda: ['val', 'train']) # Set the training and validation folders relative to the root
     
     image_size: int = 224 #
-    num_epochs: int = 5 # 
+    num_epochs: int = 1 # 5 # 
     n_train_stop: int = 0 # set to zero to use all images
     seed: int = 1998 # Set the seed for reproducibility 
     batch_size: int = batch_size # Set number of images per input batch
@@ -294,6 +293,26 @@ class ApplyMask:
     
 
 # Resnet 101 datasets initialisation
+def get_transforms(args, im_mean=im_mean, im_std=im_std, angle_min=-180, angle_max=180):
+
+    transforms = [                
+        T.ToImage(),  # Convert to tensor, only needed if you had a PIL image
+        #T.ToImageTensor(),
+        T.ToDtype(torch.float32, scale=True),  # Normalize expects float input
+        # T.Resize(int(args.image_size), interpolation=interpolation, antialias=True),
+    ]   
+    if args.do_rotation:
+        transforms.append(T.RandomRotation(degrees=(angle_min, angle_max), interpolation=interpolation, expand=False))
+    if args.do_polar: 
+        transforms.append(to_log_polar_tens(grid))
+    else:
+        transforms.append(T.Resize((int(args.image_size), int(args.image_size)), interpolation=interpolation, antialias=True))
+        #transforms.append(T.CenterCrop((int(args.image_size), int(args.image_size))))
+        transforms.append(ApplyMask(mask))
+    transforms.append(T.Normalize(mean=im_mean, std=im_std)) # to normalize colors on the imagenet dataset
+    
+    return T.Compose(transforms)
+
 def datasets_transforms(args, im_mean=im_mean, im_std=im_std, angle_min=-180, angle_max=180,
                         num_workers=num_workers, pin_memory=True, shuffle=True, verbose=True):
     """
@@ -310,25 +329,10 @@ def datasets_transforms(args, im_mean=im_mean, im_std=im_std, angle_min=-180, an
     
     for folder in args.folders:
 
-        transforms = [                
-            T.ToImage(),  # Convert to tensor, only needed if you had a PIL image
-            #T.ToImageTensor(),
-            T.ToDtype(torch.float32, scale=True),  # Normalize expects float input
-            # T.Resize(int(args.image_size), interpolation=interpolation, antialias=True),
-        ]   
-        if args.do_rotation:
-            transforms.append(T.RandomRotation(degrees=(angle_min, angle_max), interpolation=interpolation, expand=False))
-        if args.do_polar: 
-            transforms.append(to_log_polar_tens(grid))
-        else:
-            transforms.append(T.Resize((int(args.image_size), int(args.image_size)), interpolation=interpolation, antialias=True))
-            #transforms.append(T.CenterCrop((int(args.image_size), int(args.image_size))))
-            transforms.append(ApplyMask(mask))
-        transforms.append(T.Normalize(mean=im_mean, std=im_std)) # to normalize colors on the imagenet dataset
-        data_transform = T.Compose(transforms)
+        data_transform = get_transforms(args, im_mean=im_mean, im_std=im_std, angle_min=-180, angle_max=180)
 
         path = os.path.join(args.root, folder) # data path
-        image_dataset = datasets.ImageFolder(path, transform=data_transform) # load the data
+        image_dataset = torchvision.datasets.ImageFolder(path, transform=data_transform) # load the data
 
         dataloaders[folder] = torch.utils.data.DataLoader(
                                 image_dataset, 
@@ -339,7 +343,6 @@ def datasets_transforms(args, im_mean=im_mean, im_std=im_std, angle_min=-180, an
             print(f"Loaded {len(image_dataset)} images under {folder}")  
 
     return dataloaders
-
 
 
 
