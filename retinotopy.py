@@ -135,7 +135,9 @@ def make_padding_circular_again(model_retrain):
     return model_retrain
 
 
-def charge_model(model_path):
+def charge_model(model_path=None, do_polar=False):
+    # get the architecture of the network
+            
     if 'resnet50' in model_path:
         model = torchvision.models.resnet50(weights=torchvision.models.ResNet50_Weights.DEFAULT)
     elif 'resnet18' in model_path:
@@ -146,11 +148,13 @@ def charge_model(model_path):
         model = torchvision.models.resnet101(weights=torchvision.models.ResNet101_Weights.DEFAULT)
         #model = torchvision.models.resnet152(weights=torchvision.models.ResNet152_Weights.DEFAULT)
 
-    print(f'loading .... {model_path}')
-    model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
-    # isolate the feature blocks
-    return make_padding_circular_again(model)
-
+    if not(model_path is None):
+        print(f'loading .... {model_path}')
+        model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
+    if do_polar:
+        # isolate the feature blocks
+        model = make_padding_circular_again(model)
+    return model
 
 
 # data_set_type = 'focus' # Select your root between : 'boxes', 'focus', 'full'
