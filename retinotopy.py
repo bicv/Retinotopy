@@ -135,25 +135,25 @@ def make_padding_circular_again(model_retrain):
     return model_retrain
 
 
-def charge_model(model_path=None, do_polar=False):
+def charge_model(model_name='resnet50', model_path=None, do_scratch=False, do_polar=False):
     # get the architecture of the network
             
-    if 'resnet50' in model_path:
-        model = torchvision.models.resnet50(weights=torchvision.models.ResNet50_Weights.DEFAULT)
-    elif 'resnet18' in model_path:
-        model = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
-    elif 'resnet101' in model_path:
-        model = torchvision.models.resnet101(weights=torchvision.models.ResNet101_Weights.DEFAULT)
+    if model_name=='resnet18':
+        model = torchvision.models.resnet18(weights=None if do_scratch else torchvision.models.ResNet18_Weights.DEFAULT)
+    elif model_name=='resnet50':
+        model = torchvision.models.resnet50(weights=None if do_scratch else torchvision.models.ResNet50_Weights.DEFAULT)
+    elif model_name=='resnet101':
+        model = torchvision.models.resnet101(weights=None if do_scratch else torchvision.models.ResNet101_Weights.DEFAULT)
     else:
-        model = torchvision.models.resnet101(weights=torchvision.models.ResNet101_Weights.DEFAULT)
-        #model = torchvision.models.resnet152(weights=torchvision.models.ResNet152_Weights.DEFAULT)
-
+        raise ValueError(f'Unknown model {model_name}')
+    
     if not(model_path is None):
         print(f'loading .... {model_path}')
         model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
+
     if do_polar:
-        # isolate the feature blocks
         model = make_padding_circular_again(model)
+
     return model
 
 
@@ -183,6 +183,7 @@ class Params:
     rs_min: float = 0.05
     rs_max: float = -4.95
     do_polar: bool = True
+    do_scratch: bool = True # whether we use pretrained weights or not during transfer learning
     do_rotation: bool = False
     
     torch.manual_seed(seed)
