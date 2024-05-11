@@ -1,7 +1,18 @@
+#############################################################
+import os
+HOST = os.uname()[1]
+print(f'{HOST=}')
+def touch(fname): open(fname, 'w').close()
+# import requests
+import time
+tic = time.time()
 from time import strftime, gmtime
 datetag = strftime("%Y-%m-%d", gmtime())
 datetag = '2024-04-25'
+datetag = '2024-05-11'
+#############################################################
 
+#############################################################
 # MATPLOTLIB imports and parameters
 import numpy as np
 import json
@@ -36,37 +47,47 @@ def pprint(message): #display function
     print(message)
     print('-'*len(message))
 
+def transparent_cmap(cmap, N=255):
+    "Copy colormap and set alpha values"
+    mycmap = cmap
+    mycmap._init()
+    mycmap._lut[:, -1] = np.linspace(0, 1, N+4, endpoint=True)
+    return mycmap
+
 exts = ['pdf', 'svg', 'png']
+#############################################################
 
-# Wordnet
-from nltk.corpus import wordnet as wn
-#from numpy import random
-import os
-import requests
-import time
-
-# to store results
-import pandas as pd
-
-# https://docs.python.org/3/library/dataclasses.html?highlight=dataclass#module-dataclasses
-from dataclasses import dataclass, asdict, field
-
-import os
-HOST = os.uname()[1]
-print(f'{HOST=}')
-
-def touch(fname): open(fname, 'w').close()
-
+#############################################################
 # Importing libraries
+import pandas as pd # to store results
 import torch
 import torch.nn.functional as nnf
 import torchvision
+from torchvision.io import read_image
+# https://pytorch.org/vision/main/generated/torchvision.transforms.functional.crop.html
+from torchvision.transforms.functional import crop
 # from torchvision import datasets, models, transforms
 # from torchvision.datasets import ImageFolder
 from torchvision.transforms import v2 as T
 import torch.nn as nn
 torch.set_printoptions(precision=3, linewidth=140, sci_mode=False)
 
+if torch.backends.mps.is_available():
+    device = torch.device('mps')
+    print('Running on metal', device)
+elif torch.cuda.is_available():
+    device = torch.device('cuda')
+    print('Running on GPU : ', torch.cuda.get_device_name(), '#GPU=', torch.cuda.device_count())
+else:
+    device = torch.device('cpu')
+# device = torch.device('cpu')
+# torch.__version__, device
+print(f'On date {datetag}, Running learning on host {HOST} with device {device}')
+#############################################################
+
+#############################################################
+# data_set_type = 'focus' # Select your root between : 'boxes', 'focus', 'full', 'square'
+data_set_types = ['full', 'bbox', 'focus', ]
 data_cache = 'cached_data'
 interpolation = T.InterpolationMode.BILINEAR
 batch_size = 50
@@ -105,60 +126,8 @@ else:
     DATAROOT = data_cache
     num_workers = 1
 
-
-if torch.backends.mps.is_available():
-    device = torch.device('mps')
-    print('Running on metal', device)
-elif torch.cuda.is_available():
-    device = torch.device('cuda')
-    print('Running on GPU : ', torch.cuda.get_device_name(), '#GPU=', torch.cuda.device_count())
-else:
-    device = torch.device('cpu')
-
-# device = torch.device('cpu')
-# torch.__version__, device
-
-def make_padding_circular_again(model_retrain):
-    for child in list(model_retrain.children()):
-        if isinstance(child, (nn.Conv2d)):
-            child.padding_mode = 'circular'
-        for grandchild in list(child.children()):
-            if isinstance(grandchild, (nn.Conv2d)):
-                grandchild.padding_mode = 'circular'
-            for grandgrandchild in list(grandchild.children()):
-                if isinstance(grandgrandchild, (nn.Conv2d)):
-                    grandgrandchild.padding_mode = 'circular'
-                for grandgrandgrandchild in list(grandgrandchild.children()):
-                    if isinstance(grandgrandgrandchild, (nn.Conv2d)):
-                        grandgrandgrandchild.padding_mode = 'circular'
-
-    return model_retrain
-
-
-def charge_model(model_name='resnet50', model_path=None, do_scratch=False, do_polar=False):
-    # get the architecture of the network
-            
-    if model_name=='resnet18':
-        model = torchvision.models.resnet18(weights=None if do_scratch else torchvision.models.ResNet18_Weights.DEFAULT)
-    elif model_name=='resnet50':
-        model = torchvision.models.resnet50(weights=None if do_scratch else torchvision.models.ResNet50_Weights.DEFAULT)
-    elif model_name=='resnet101':
-        model = torchvision.models.resnet101(weights=None if do_scratch else torchvision.models.ResNet101_Weights.DEFAULT)
-    else:
-        raise ValueError(f'Unknown model {model_name}')
-    
-    if not(model_path is None):
-        print(f'loading .... {model_path}')
-        model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
-
-    if do_polar:
-        model = make_padding_circular_again(model)
-
-    return model
-
-
-# data_set_type = 'focus' # Select your root between : 'boxes', 'focus', 'full'
-data_set_types = ['full', 'bbox', 'focus', ]
+# https://docs.python.org/3/library/dataclasses.html?highlight=dataclass#module-dataclasses
+from dataclasses import dataclass, asdict, field
 
 @dataclass
 class Params:
@@ -173,7 +142,7 @@ class Params:
     folders: list = field(default_factory=lambda: ['val', 'train']) # Set the training and validation folders relative to the root
     
     image_size: int = 224 #
-    num_epochs: int = 1 # 5 # 
+    num_epochs: int = 5 # 
     n_train_stop: int = 0 # set to zero to use all images
     seed: int = 1998 # Set the seed for reproducibility 
     batch_size: int = batch_size # Set number of images per input batch
@@ -183,9 +152,9 @@ class Params:
     beta2: float = 0 # S
     rs_min: float = 0.05
     rs_max: float = -4.95
-    do_polar: bool = True
+    do_polar: bool = True # use a retinotopic mapping
     do_scratch: bool = True # whether we use pretrained weights or not during transfer learning
-    do_rotation: bool = False
+    do_rotation: bool = False # just use this for rotation attacks
     
     torch.manual_seed(seed)
     
@@ -195,30 +164,44 @@ args = Params()
 json_fname = os.path.join(data_cache, datetag + '_config_args.json')
 with open(json_fname, 'wt') as f:
     json.dump(vars(args), f, indent=4)
+#############################################################
 
 
-#DCCN training
-# annotations = json.load(open(args.annotations) ) 
-
-with open(args.loader) as json_file:
-    Imagenet_urls_ILSVRC_2016 = json.load(json_file)
-match = []
-
+#############################################################
+# Wordnet
+from nltk.corpus import wordnet as wn
 # import nltk
 # nltk.download('wordnet')
+# annotations = json.load(open(args.annotations) ) 
+with open(args.loader) as json_file:
+    Imagenet_urls_ILSVRC_2016 = json.load(json_file)
+    
+# match = []
+labels = []
+revlabels_dico = {}
+labels_dico = {}
+i_labels_dico = {}
 #----------------Get the label for the Imagenet categorization------------------------
 for i_img, img_id in enumerate(Imagenet_urls_ILSVRC_2016):
     syn_= wn.synset_from_pos_and_offset('n', int(img_id.replace('n','')))
     sem_ = syn_.hypernym_paths()[0]
-    for i in np.arange(len(sem_)):
-        if sem_[i].lemmas()[0].name() in 'animal' :
-            match.append(i_img)
-#------------------------------------------------------------------------------------
+    label = syn_.name().split(".")[0]
+    labels.append(label)
+    i_labels_dico[label] = i_img
+    labels_dico[label] = img_id
+    revlabels_dico[img_id] = label
+    # for i in np.arange(len(sem_)):
+    # for i in np.arange(len(sem_)):
+    #     if sem_[i].lemmas()[0].name() in 'animal' :
+    #         match.append(i_img)
+#############################################################
 
+
+#############################################################
 im_mean = np.array([0.485, 0.456, 0.406])
 im_std = np.array([0.229, 0.224, 0.225])
 
-def imgs_to_np(img_list):
+def imgs_to_np(img_list, im_mean=im_mean, im_std=im_std):
     images = torchvision.utils.make_grid(img_list)
     """Imshow for Tensor."""
     inp = images.numpy().transpose((1, 2, 0))
@@ -226,32 +209,16 @@ def imgs_to_np(img_list):
     inp = np.clip(inp, 0, 1)
     return(inp)
 
-def imshow(img_list, title=None, fig_height=5): #allow to display the input image
+def imshow(img_list, im_mean=im_mean, im_std=im_std, 
+           title=None, fig_height=5): #allow to display the input image
     fig = plt.figure(figsize=(fig_height*len(img_list), fig_height))
-    inp = imgs_to_np(img_list)
+    inp = imgs_to_np(img_list, im_mean=im_mean, im_std=im_std)
     plt.imshow(inp)
     plt.xticks([]) ; plt.yticks([])
     if title is not None: plt.title(title)
     plt.tight_layout()
     fig.set_facecolor(color='white')
     plt.show()
-
-
-print(f'On date {args.datetag}, Running learning on host {HOST} with device {device}')
-
-# n_r, n_t = args.image_size, args.image_size 
-# n_r, n_t = args.image_size, 256 
-    
-match = []
-labels = []
-#----------------Get the label for the Imagenet categorization------------------------
-for i_img, img_id in enumerate(Imagenet_urls_ILSVRC_2016):
-    syn_= wn.synset_from_pos_and_offset('n', int(img_id.replace('n','')))
-    sem_ = syn_.hypernym_paths()[0]
-    labels.append(syn_.name().split(".")[0])
-    for i in np.arange(len(sem_)):
-        if sem_[i].lemmas()[0].name() in 'animal' :
-            match.append(i_img)
 
 
 def get_grid(args, endpoint=False):
@@ -349,8 +316,99 @@ def datasets_transforms(args, im_mean=im_mean, im_std=im_std, angle_min=-180, an
             print(f"Loaded {len(image_dataset)} images under {folder}")  
 
     return dataloaders
+#############################################################
+
+#############################################################
+def make_padding_circular_again(model_retrain):
+    for child in list(model_retrain.children()):
+        if isinstance(child, (nn.Conv2d)):
+            child.padding_mode = 'circular'
+        for grandchild in list(child.children()):
+            if isinstance(grandchild, (nn.Conv2d)):
+                grandchild.padding_mode = 'circular'
+            for grandgrandchild in list(grandchild.children()):
+                if isinstance(grandgrandchild, (nn.Conv2d)):
+                    grandgrandchild.padding_mode = 'circular'
+                for grandgrandgrandchild in list(grandgrandchild.children()):
+                    if isinstance(grandgrandgrandchild, (nn.Conv2d)):
+                        grandgrandgrandchild.padding_mode = 'circular'
+
+    return model_retrain
 
 
+def charge_model(model_name='resnet50', model_path=None, do_scratch=False, do_polar=False):
+    # get the architecture of the network
+            
+    if model_name=='resnet18':
+        model = torchvision.models.resnet18(weights=None if do_scratch else torchvision.models.ResNet18_Weights.DEFAULT)
+    elif model_name=='resnet50':
+        model = torchvision.models.resnet50(weights=None if do_scratch else torchvision.models.ResNet50_Weights.DEFAULT)
+    elif model_name=='resnet101':
+        model = torchvision.models.resnet101(weights=None if do_scratch else torchvision.models.ResNet101_Weights.DEFAULT)
+    else:
+        raise ValueError(f'Unknown model {model_name}')
+    
+    if not(model_path is None):
+        print(f'loading .... {model_path}')
+        model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
+
+    if do_polar:
+        model = make_padding_circular_again(model)
+
+    return model
+#############################################################
+
+
+#############################################################
+size_ratio = 0.3 # how much of the image to use relative to radius
+def get_positions(image, resolution, size_ratio=size_ratio, method='full'):
+    _, H, W = image.shape
+
+    min_size = np.min((H, W))
+    box_size = int(min_size*size_ratio)
+    if method=='valid':
+        if H < W:
+            shift = (0, (W-H)/2)
+        else:
+            shift = ((H-W)/2, 0)
+
+        pos_h = np.linspace(shift[0]+box_size/2, min_size+shift[0]-box_size/2, resolution[0], endpoint=True)
+        pos_w = np.linspace(shift[1]+box_size/2, min_size+shift[1]-box_size/2, resolution[1], endpoint=True)
+    else:
+        pos_h = np.linspace(0, H, resolution[0]+2, endpoint=True)[1:-1]
+        pos_w = np.linspace(0, W, resolution[1]+2, endpoint=True)[1:-1]
+
+    pos_H, pos_W = np.meshgrid(pos_h, pos_w)
+
+    return pos_H, pos_W, box_size
+
+def compute_likelihood_map(args, model, image, resolution=(11, 11), # how many fixation points to use
+                           size_ratio=size_ratio, # how much of the image to use relative to radius
+                           N_batch=100, method='full'):
+
+    pos_H, pos_W, box_size = get_positions(image, resolution, size_ratio, method=method)
+    data_transform = get_transforms(args)
+
+    N_fixations = resolution[0] * resolution[1]
+    proba_label = np.zeros((N_fixations, 1000))
+    for idx_start in np.arange(0, N_fixations, N_batch):
+        idx_stop = np.min((idx_start+N_batch, N_fixations))
+            
+        with torch.no_grad():
+            cropped_images = torch.empty((idx_stop-idx_start, 3, box_size, box_size), device=device)
+
+            for i_fixation, (h, w) in enumerate(zip(pos_H.ravel()[idx_start:idx_stop], 
+                                                    pos_W.ravel()[idx_start:idx_stop])):
+                h, w = int(h), int(w)
+                cropped_image = crop(image, h-box_size//2, w-box_size//2, box_size, box_size)
+                cropped_images[i_fixation, ...] = data_transform(cropped_image)
+
+            outputs = torch.nn.functional.softmax(model(cropped_images), dim=1)
+
+        proba_label[idx_start:idx_stop, :] = outputs.detach().cpu().numpy()
+        
+    return pos_H, pos_W, proba_label
+#############################################################
 
 def enlarge_function(array, new_resolution):
     # Get the dimensions of the input array
