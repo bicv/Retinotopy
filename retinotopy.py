@@ -158,6 +158,7 @@ def charge_model(model_name='resnet50', model_path=None, do_scratch=False, do_po
 
 
 # data_set_type = 'focus' # Select your root between : 'boxes', 'focus', 'full'
+data_set_types = ['full', 'bbox', 'focus', ]
 
 @dataclass
 class Params:
@@ -307,8 +308,9 @@ def get_transforms(args, im_mean=im_mean, im_std=im_std, angle_min=-180, angle_m
         #T.ToImageTensor(),
         T.ToDtype(torch.float32, scale=True),  # Normalize expects float input
     ]   
-    if args.do_rotation:
+    if args.do_rotation: # used for augmentation and testing rotations
         transforms.append(T.RandomRotation(degrees=(angle_min, angle_max), interpolation=interpolation, expand=False))
+
     if args.do_polar: 
         transforms.append(to_log_polar_tens(grid))
     else:
