@@ -8,8 +8,8 @@ import time
 tic = time.time()
 from time import strftime, gmtime
 datetag = strftime("%Y-%m-%d", gmtime())
-datetag = '2024-04-25'
 datetag = '2024-05-11'
+datetag = '2024-04-25'
 #############################################################
 
 #############################################################
@@ -87,7 +87,7 @@ print(f'On date {datetag}, Running learning on host {HOST} with device {device}'
 
 #############################################################
 # data_set_type = 'focus' # Select your root between : 'boxes', 'focus', 'full', 'square'
-data_set_types = ['full', 'focus', 'bbox', 'square', ]
+data_set_types = ['full', 'focus', 'square', 'bbox', ]
 data_cache = 'cached_data'
 interpolation = T.InterpolationMode.BILINEAR
 batch_size = 50
@@ -335,6 +335,78 @@ def make_padding_circular_again(model_retrain):
 
     return model_retrain
 
+def train_model(args, model, dataloaders, each_steps=64, verbose=True):
+    
+    # retraining the full model
+    for param in model.parameters():
+        param.requires_grad = True        
+
+    # sets the optimizer
+    if args.beta2 > 0.: 
+        optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, betas=(1-args.momentum, 1-args.beta2)) 
+    else:
+        optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=1-args.momentum) # to set training variables
+    
+    # https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html 
+    criterion = nn.CrossEntropyLoss() # binary_cross_entropy_with_logits
+
+    # the DataFrame to record from
+    df_train = pd.DataFrame([], columns=['epoch', 'i_image', 'total_image', 'avg_loss', 'avg_acc', 'avg_loss_val', 'avg_acc_val', 'time']) 
+
+
+    since = time.time()
+    total_image = 0
+    n_train = len(dataloaders['train'].dataset)
+    n_train_stop = args.n_train_stop
+    if n_train_stop==0: n_train_stop = n_train
+
+    for i_epoch in range(args.num_epochs):
+        i_image = 0
+        for i_step, (images, labels) in enumerate(dataloaders['train']):
+            images, labels = images.to(device), labels.to(device)
+            total_image += len(images)
+            i_image += len(images)
+            if i_image > n_train_stop: break # early stopping
+
+            optimizer.zero_grad()
+
+            outputs = model(images)
+             
+            loss = criterion(outputs, labels)            
+            loss.backward()
+            optimizer.step()
+
+            _, preds = torch.max(outputs.data, dim=1)
+
+            avg_loss = loss.item() * images.size(0)
+            avg_acc = torch.mean((preds == labels.data)*1.).cpu().item()
+
+            if (i_step % (max(n_train_stop//args.batch_size//each_steps, 1))==0) or (i_step == n_train_stop-1):
+                with torch.no_grad():
+                    loss_val = 0
+                    acc_val = 0
+                    model = model.eval()
+                    n_val = len(dataloaders['val'])
+                    for _, (images, labels) in enumerate(dataloaders['val']):
+                        images, labels = images.to(device), labels.to(device)
+
+                        outputs = model(images)
+
+                        loss = criterion(outputs, labels)
+
+                        loss_val += loss.item() * images.size(0)
+
+                        _, preds = torch.max(outputs.data, dim=1)
+                        acc_val += torch.mean((preds == labels.data)*1.).cpu().item()
+
+                    avg_loss_val = loss_val / n_val
+                    avg_acc_val = acc_val / n_val
+
+                    df_train.loc[len(df_train)] = {'epoch': i_epoch, 'i_image':i_image, 'total_image':total_image, 'avg_loss':avg_loss, 'avg_acc':avg_acc, 'avg_loss_val':avg_loss_val, 'avg_acc_val':avg_acc_val, 'time':time.time() - since}
+                    if verbose:  print(f"Epoch {i_epoch}, i_image {i_image} : train= loss: {avg_loss:.4f} / acc : {avg_acc:.4f} - val= loss : {avg_loss_val:.4f} / acc : {avg_acc_val:.4f} / time:{time.time() - since:.1f}")
+
+    if torch.cuda.is_available(): torch.cuda.empty_cache()        
+    return model, df_train
 
 def charge_model(model_name='resnet50', model_path=None, do_scratch=False, do_polar=False):
     # get the architecture of the network
