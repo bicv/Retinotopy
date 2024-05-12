@@ -1,4 +1,6 @@
 #############################################################
+# data_set_type = 'focus' # Select your root between : 'boxes', 'focus', 'full', 'square'
+data_set_types = ['full', 'square', 'bbox', 'focus', ]
 import os
 HOST = os.uname()[1]
 print(f'{HOST=}')
@@ -16,6 +18,7 @@ datetag = '2024-04-25'
 # MATPLOTLIB imports and parameters
 import numpy as np
 import json
+from tqdm import tqdm
 import matplotlib.pyplot as plt
 from matplotlib.figure import SubplotParams
 subplotpars = SubplotParams(left=0.125, right=.95, bottom=0.25, top=.975, wspace=0.05, hspace=0.05,)
@@ -55,6 +58,7 @@ def transparent_cmap(cmap, N=255):
     return mycmap
 
 exts = ['pdf', 'svg', 'png']
+exts = ['pdf', 'png']
 #############################################################
 
 #############################################################
@@ -74,20 +78,14 @@ torch.set_printoptions(precision=3, linewidth=140, sci_mode=False)
 
 if torch.backends.mps.is_available():
     device = torch.device('mps')
-    print('Running on metal', device)
 elif torch.cuda.is_available():
     device = torch.device('cuda')
     print('Running on GPU : ', torch.cuda.get_device_name(), '#GPU=', torch.cuda.device_count())
 else:
     device = torch.device('cpu')
-# device = torch.device('cpu')
-# torch.__version__, device
-print(f'On date {datetag}, Running learning on host {HOST} with device {device}')
 #############################################################
 
 #############################################################
-# data_set_type = 'focus' # Select your root between : 'boxes', 'focus', 'full', 'square'
-data_set_types = ['full', 'focus', 'square', 'bbox', ]
 data_cache = 'cached_data'
 interpolation = T.InterpolationMode.BILINEAR
 batch_size = 50
@@ -116,16 +114,20 @@ elif 'obiwan' in HOST:
     interpolation = T.InterpolationMode.NEAREST
     num_workers = 4
 elif 'Ahsoka' in HOST: 
-    DATAROOT = '/Volumes/data/2024_archives/2024_science/Deep_learning/data'
     DATAROOT = '/Volumes/backups/2023_archives/2023_science/JNJER_PhD/data'
-    num_workers = 4
+    DATAROOT = '/Volumes/data/2024_archives/2024_science/Deep_learning/data'
+    num_workers = 24
+    device = torch.device('cpu')
 elif 'DESKTOP-27VNO0E' in HOST: 
     DATAROOT = '/mnt/d/Data/'
     num_workers = 16
 else:
     DATAROOT = data_cache
     num_workers = 1
+print(f'On date {datetag}, Running learning on host {HOST} with device {device}')
+#############################################################
 
+#############################################################
 # https://docs.python.org/3/library/dataclasses.html?highlight=dataclass#module-dataclasses
 from dataclasses import dataclass, asdict, field
 
@@ -149,7 +151,7 @@ class Params:
     batch_size_val: int = batch_size # Set number of images per input batch
     lr: float = 0.00015 # Set learning rate 
     momentum: float = .06 # Set the momentum
-    beta2: float = 0 # S
+    beta2: float = 0 # Set the second momentum - use SGD if set to 0
     rs_min: float = 0.05
     rs_max: float = -4.95
     do_polar: bool = True # use a retinotopic mapping
@@ -210,16 +212,17 @@ def imgs_to_np(img_list, im_mean=im_mean, im_std=im_std):
     return(inp)
 
 def imshow(img_list, im_mean=im_mean, im_std=im_std, 
-           title=None, fig_height=5): #allow to display the input image
-    fig = plt.figure(figsize=(fig_height*len(img_list), fig_height))
+           title=None, fig_height=5, fig=None, ax=None): #allow to display the input image
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(fig_height*len(img_list), fig_height))
     inp = imgs_to_np(img_list, im_mean=im_mean, im_std=im_std)
-    plt.imshow(inp)
-    plt.xticks([]) ; plt.yticks([])
-    if title is not None: plt.title(title)
-    plt.tight_layout()
+    ax.imshow(inp)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    if title is not None: fig.suptitle(title)
     fig.set_facecolor(color='white')
-    plt.show()
-
+    plt.tight_layout()
+    
 
 def get_grid(args, endpoint=False):
 
@@ -272,9 +275,9 @@ def get_transforms(args, im_mean=im_mean, im_std=im_std, angle_min=-180, angle_m
 
     transforms = [                
         T.ToImage(),  # Convert to tensor, only needed if you had a PIL image
-        #T.ToImageTensor(),
         T.ToDtype(torch.float32, scale=True),  # Normalize expects float input
     ]   
+
     if args.do_rotation: # used for augmentation and testing rotations
         transforms.append(T.RandomRotation(degrees=(angle_min, angle_max), interpolation=interpolation, expand=False))
 
@@ -408,7 +411,7 @@ def train_model(args, model, dataloaders, each_steps=64, verbose=True):
     if torch.cuda.is_available(): torch.cuda.empty_cache()        
     return model, df_train
 
-def charge_model(model_name='resnet50', model_path=None, do_scratch=False, do_polar=False):
+def charge_model(model_name='resnet50', model_path=None, do_scratch=False, do_circular=False):
     # get the architecture of the network
             
     if model_name=='resnet18':
@@ -424,7 +427,7 @@ def charge_model(model_name='resnet50', model_path=None, do_scratch=False, do_po
         print(f'loading .... {model_path}')
         model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
 
-    if do_polar:
+    if do_circular:
         model = make_padding_circular_again(model)
 
     return model
