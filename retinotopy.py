@@ -87,7 +87,7 @@ print(f'On date {datetag}, Running learning on host {HOST} with device {device}'
 
 #############################################################
 # data_set_type = 'focus' # Select your root between : 'boxes', 'focus', 'full', 'square'
-data_set_types = ['full', 'bbox', 'focus', ]
+data_set_types = ['full', 'focus', 'bbox', 'square', ]
 data_cache = 'cached_data'
 interpolation = T.InterpolationMode.BILINEAR
 batch_size = 50
