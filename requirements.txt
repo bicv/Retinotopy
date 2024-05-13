@@ -16,6 +16,7 @@ notebook
 nbconvert
 lmfit
 pandas
+pyarrow
 scipy
 scikit-learn
 seaborn
