@@ -1,0 +1,21 @@
+Bootstrap:docker
+From:continuumio/miniconda3
+
+%environment
+
+%runscript
+. /etc/profile
+conda activate pytorch
+exec make
+
+%post
+# Create some common mountpoints for systems without overlayfs
+mkdir /scratch
+mkdir /apps
+
+. /etc/profile
+conda create --name pytorch
+conda activate pytorch
+conda install pytorch torchvision torchaudio pytorch-cuda -c pytorch -c nvidia
+# conda install pytorch torchvision torchaudio cudatoolkit=11.6 -c pytorch
+conda install matplotlib seaborn numpy pandas pyarrow scikit-learn jupyter nbconvert optuna nltk watermark scipy -c conda-forge
