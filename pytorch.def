@@ -18,4 +18,4 @@ conda create --name pytorch
 conda activate pytorch
 conda install pytorch torchvision torchaudio pytorch-cuda -c pytorch -c nvidia
 # conda install pytorch torchvision torchaudio cudatoolkit=11.6 -c pytorch
-conda install matplotlib seaborn numpy pandas pyarrow scikit-learn jupyter nbconvert optuna nltk watermark scipy -c conda-forge
+conda install matplotlib seaborn numpy lmfit pandas pyarrow scikit-learn jupyter nbconvert optuna nltk watermark scipy -c conda-forge
