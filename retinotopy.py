@@ -1,6 +1,6 @@
 #############################################################
-# data_set_type = 'focus' # Select your root between : 'boxes', 'focus', 'full', 'square'
-data_set_types = ['full', 'focus', 'square', 'bbox', ]
+# data_set_type = 'focus' # Select your root between : 'boxes', 'square', 'focus', 'full', 'square'
+data_set_types = ['full', 'focus', 'bbox', ]
 import os
 HOST = os.uname()[1]
 print(f'{HOST=}')
