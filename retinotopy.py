@@ -124,7 +124,7 @@ elif 'DESKTOP-27VNO0E' in HOST:
 else:
     DATAROOT = data_cache
     num_workers = 1
-print(f'On date {datetag}, Running learning on host {HOST} with device {device}')
+print(f'On date {datetag}, Running learning on host {HOST} with device {device}, pytoch=={torch.__version__}')
 #############################################################
 
 #############################################################
