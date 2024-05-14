@@ -98,7 +98,7 @@ elif HOST in ['babbage']: #
 elif HOST in ['CONEC-LID-001']: # emmy
     DATAROOT = '/data/JNJER/Deep_learning/data'
     # TODO test 
-    DATAROOT = '/scratch'
+    DATAROOT = '/scratch/ImageNet'
     num_workers = 16
 elif HOST in ['CONEC-LID-002']: # faraday
     # DATAROOT = '/envau/userspace/perrinet.l/data'
