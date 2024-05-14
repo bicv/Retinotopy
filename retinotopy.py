@@ -11,7 +11,7 @@ tic = time.time()
 from time import strftime, gmtime
 datetag = strftime("%Y-%m-%d", gmtime())
 datetag = '2024-04-25'
-datetag = '2024-05-11'
+datetag = '2024-05-14'
 #############################################################
 
 #############################################################
@@ -146,7 +146,7 @@ class Params:
     folders: list = field(default_factory=lambda: ['val', 'train']) # Set the training and validation folders relative to the root
     
     image_size: int = 224 #
-    num_epochs: int = 5 # 
+    num_epochs: int = 2 # 
     n_train_stop: int = 0 # set to zero to use all images
     seed: int = 1998 # Set the seed for reproducibility 
     batch_size: int = batch_size # Set number of images per input batch

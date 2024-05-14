@@ -1,10 +1,6 @@
 DIR=JeremieDaucePerrinet2024notebooks
 
 #################@#################@#################@#################
-# bootstrap: rsync  -av -u --exclude *.pt  -e "ssh -p 8822 -i ~/.ssh/id-ring-ecdsa" /data/perrinet.l/research/science/JNJER_PhD/RetinoTopy/JeremieDaucePerrinet2024notebooks lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science
-# data rsync  -av -u --exclude *.pt  -e "ssh -p 8822 -i ~/.ssh/id-ring-ecdsa" /data/JNJER/Deep_learning/data/Imagenet_focus lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science/Deep_learning/data/
-# rsync  -av -u --exclude *.pt  -e "ssh -p 8822 -i ~/.ssh/id-ring-ecdsa" /data/JNJER/Deep_learning/data/Imagenet_bbox lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science/Deep_learning/data/
-
 # 
 MESO_URL = lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science/
 MESO_OPTS=-av -u --exclude *.pt --exclude pytorch.sif   -e "ssh -p 8822 -i ~/.ssh/id-ring-ecdsa"
@@ -14,6 +10,17 @@ pull_meso:
 push_meso:
 	rsync  $(MESO_OPTS) cached_data $(MESO_URL)/$(DIR) 
 
+
+# transfer dataset to the mesocentre
+# bootstrap: rsync  -av -u --exclude *.pt  -e "ssh -p 8822 -i ~/.ssh/id-ring-ecdsa" /data/perrinet.l/research/science/JNJER_PhD/RetinoTopy/JeremieDaucePerrinet2024notebooks lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science
+# data rsync  -av -u --exclude *.pt  -e "ssh -p 8822 -i ~/.ssh/id-ring-ecdsa" /data/JNJER/Deep_learning/data/Imagenet_focus lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science/Deep_learning/data/
+# rsync  -av -u --exclude *.pt  -e "ssh -p 8822 -i ~/.ssh/id-ring-ecdsa" /data/JNJER/Deep_learning/data/Imagenet_bbox lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science/Deep_learning/data/
+# DATADIR=/data/JNJER/Deep_learning
+# data_push_meso:
+# 	rsync $(MESO_OPTS) $(DATADIR)/Deep_learning $(MESO_URL)
+
+# data_pull_meso:
+# 	rsync  $(MESO_OPTS) $(MESO_URL)/Deep_learning $(DATADIR)
 
 #################@#################@#################@#################
 
