@@ -91,7 +91,7 @@ interpolation = T.InterpolationMode.BILINEAR
 batch_size = 50
 if '.cluster' in HOST: # mesocentre
     DATAROOT = '/scratch/lperrinet/science/Deep_learning/data'
-    num_workers = 1
+    num_workers = 8
 elif HOST in ['babbage']: # 
     DATAROOT = '/data/Deep_learning/data'
     num_workers = 2
@@ -102,12 +102,15 @@ elif HOST in ['CONEC-LID-001']: # emmy
     num_workers = 16
 elif HOST in ['CONEC-LID-002']: # faraday
     # DATAROOT = '/envau/userspace/perrinet.l/data'
-    DATAROOT = '/scratch'
+    DATAROOT = '/scratch/ImageNet'
     num_workers = 16    
 elif HOST in ['inv-ope-de06', 'INV-133-DE01']: # CURIE , ada
     DATAROOT = '/data/JNJER/Deep_learning/data'
     num_workers = 2
-elif HOST in ['neo-ope-de04']: # Darwin
+elif HOST in ['neo-ope-de04']: # Darwin  
+    DATAROOT = '/data/JNJER/Deep_learning/data'
+    num_workers = 16
+elif HOST in ['brain-lid-004']: # Darwin  
     DATAROOT = '/data/JNJER/Deep_learning/data'
     num_workers = 16
 elif 'obiwan' in HOST: 
@@ -373,7 +376,10 @@ def train_model(args, model, dataloaders, each_steps=64, verbose=True):
             i_image += len(images)
             if i_image > n_train_stop: break # early stopping
 
-            optimizer.zero_grad()
+            # https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html#use-parameter-grad-none-instead-of-model-zero-grad-or-optimizer-zero-grad
+            # optimizer.zero_grad()
+            for param in model.parameters():
+                param.grad = None
 
             outputs = model(images)
              
