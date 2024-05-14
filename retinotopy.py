@@ -3,7 +3,7 @@
 data_set_types = ['full', 'focus', 'bbox', ]
 import os
 HOST = os.uname()[1]
-print(f'{HOST=}')
+# print(f'{HOST=}')
 def touch(fname): open(fname, 'w').close()
 # import requests
 import time
@@ -97,6 +97,8 @@ elif HOST in ['babbage']: #
     num_workers = 2
 elif HOST in ['CONEC-LID-001']: # emmy
     DATAROOT = '/data/JNJER/Deep_learning/data'
+    # TODO test 
+    DATAROOT = '/scratch'
     num_workers = 16
 elif HOST in ['CONEC-LID-002']: # faraday
     # DATAROOT = '/envau/userspace/perrinet.l/data'
@@ -122,9 +124,9 @@ elif 'DESKTOP-27VNO0E' in HOST:
     DATAROOT = '/mnt/d/Data/'
     num_workers = 16
 else:
-    DATAROOT = data_cache
-    num_workers = 1
-print(f'On date {datetag}, Running learning on host {HOST} with device {device}, pytoch=={torch.__version__}')
+    raise ValueError(f'Unknown host {HOST}')
+
+pprint(f'On date {datetag}, Running learning on host {HOST} with device {device}, pytoch=={torch.__version__}')
 #############################################################
 
 #############################################################
@@ -155,7 +157,7 @@ class Params:
     rs_min: float = 0.05
     rs_max: float = -4.95
     do_polar: bool = True # use a retinotopic mapping
-    do_scratch: bool = True # whether we use pretrained weights or not during transfer learning
+    do_scratch: bool = False # whether we use pretrained weights or not during transfer learning
     do_rotation: bool = False # just use this for rotation attacks
     
     torch.manual_seed(seed)

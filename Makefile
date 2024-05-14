@@ -14,8 +14,6 @@ pull_meso:
 push_meso:
 	rsync  $(MESO_OPTS) cached_data $(MESO_URL)/$(DIR) 
 
-pull_all: pull_ada pull_babbage pull_darwin pull_fortytwo pull_meso
-push_all: push_ada push_babbage push_darwin push_fortytwo push_meso
 
 #################@#################@#################@#################
 
