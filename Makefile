@@ -3,7 +3,7 @@ DIR=JeremieDaucePerrinet2024notebooks
 #################@#################@#################@#################
 # 
 MESO_URL = lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science/
-MESO_OPTS=-av -u --exclude *.pt --exclude pytorch.sif   -e "ssh -p 8822 -i ~/.ssh/id-ring-ecdsa"
+MESO_OPTS=-av -u --exclude pytorch.sif   -e "ssh -p 8822 -i ~/.ssh/id-ring-ecdsa"
 pull_meso:
 	rsync $(MESO_OPTS)   $(MESO_URL)/$(DIR)/cached_data .
 
