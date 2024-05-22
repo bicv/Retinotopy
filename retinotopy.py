@@ -1,6 +1,7 @@
 #############################################################
 # data_set_type = 'focus' # Select your root between : 'boxes', 'square', 'focus', 'full', 'square'
-data_set_types = ['full', 'focus', 'bbox', ]
+data_set_types = ['full', 'bbox', 'focus', ]
+data_set_linestyles = [':', '-.', '-', ]
 import os
 HOST = os.uname()[1]
 # print(f'{HOST=}')
@@ -107,14 +108,15 @@ elif HOST in ['inv-ope-de06', 'INV-133-DE01']: # CURIE , ada
     DATAROOT = '/data/JNJER/Deep_learning/data'
     num_workers = 2
 elif HOST in ['neo-ope-de04']: # Darwin  
-    DATAROOT = '/data/JNJER/Deep_learning/data'
+    DATAROOT = '/data_emmy/JNJER/Deep_learning/data'
     num_workers = 16
-elif HOST in ['brain-lid-004']: # Darwin  
+elif HOST in ['brain-lid-004']: # GPU manu  
     DATAROOT = '/data/JNJER/Deep_learning/data'
     num_workers = 16
 elif 'obiwan' in HOST: 
     # DATAROOT = '/Volumes/UnaTera/2023_archives/2023_science/JNJER_PhD/data'
     DATAROOT = '/Volumes/SSD1TO/ImageNet'
+    DATAROOT = '/Volumes/data/2024_archives/2024_science/Deep_learning/data'
     interpolation = T.InterpolationMode.NEAREST
     num_workers = 4
 elif 'Ahsoka' in HOST: 
@@ -128,7 +130,7 @@ elif 'DESKTOP-27VNO0E' in HOST:
 else:
     raise ValueError(f'Unknown host {HOST}')
 
-pprint(f'On date {datetag}, Running learning on host {HOST} with device {device}, pytoch=={torch.__version__}')
+pprint(f'On date {datetag}, Running learning on host {HOST} with device {device}, pytorch=={torch.__version__}')
 #############################################################
 
 #############################################################
@@ -248,9 +250,9 @@ def get_grid(args, endpoint=False):
 
 
 
-class to_log_polar_tens(object): 
-    def __init__(self, logPolar_grid):
-        self.grid = logPolar_grid
+class to_log_polar_tens:
+    def __init__(self, grid):
+        self.grid = grid
 
     def __call__(self, images):
         return nnf.grid_sample(images.unsqueeze(0), self.grid.unsqueeze(0), 
@@ -274,7 +276,7 @@ class ApplyMask:
 # Resnet 101 datasets initialisation
 def get_transforms(args, im_mean=im_mean, im_std=im_std, angle_min=-180, angle_max=180):
 
-    grid = get_grid(args)
+    grid = get_grid(args).to(device)
     mask = make_mask(args.image_size)
 
     transforms = [                
@@ -470,6 +472,8 @@ def compute_likelihood_map(args, model, image, resolution=(11, 11), # how many f
 
     pos_H, pos_W, box_size = get_positions(image, resolution, size_ratio, method=method)
     data_transform = get_transforms(args)
+    # image = image.to(device)
+    # model = model.to(device)
 
     N_fixations = resolution[0] * resolution[1]
     proba_label = np.zeros((N_fixations, 1000))

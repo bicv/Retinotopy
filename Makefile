@@ -23,6 +23,13 @@ push_meso:
 # data_pull_meso:
 # 	rsync  $(MESO_OPTS) $(MESO_URL)/Deep_learning $(DATADIR)
 
+
+
+#################@#################@#################@#################
+
+optuna:
+	optuna-dashboard sqlite:///cached_data/2024-05-14_optuna.sqlite3
+
 #################@#################@#################@#################
 
 load_modules:
