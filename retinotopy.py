@@ -419,7 +419,7 @@ def train_model(args, model, dataloaders, each_steps=64, verbose=True):
     if torch.cuda.is_available(): torch.cuda.empty_cache()        
     return model, df_train
 
-def charge_model(model_name='resnet50', model_path=None, do_scratch=False, do_circular=False):
+def charge_model(model_name='resnet50', model_path=None, do_scratch=False, do_circular=False, verbose=True):
     # get the architecture of the network
             
     if model_name=='resnet18':
@@ -432,7 +432,7 @@ def charge_model(model_name='resnet50', model_path=None, do_scratch=False, do_ci
         raise ValueError(f'Unknown model {model_name}')
     
     if not(model_path is None):
-        print(f'loading .... {model_path}')
+        if verbose: print(f'loading .... {model_path}')
         model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
 
     if do_circular:
