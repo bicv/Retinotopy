@@ -277,7 +277,7 @@ class ApplyMask:
 def get_transforms(args, im_mean=im_mean, im_std=im_std, angle_min=-180, angle_max=180):
 
     grid = get_grid(args).to(device)
-    mask = make_mask(args.image_size)
+    mask = make_mask(args.image_size).to(device)
 
     transforms = [                
         T.ToImage(),  # Convert to tensor, only needed if you had a PIL image
@@ -472,8 +472,8 @@ def compute_likelihood_map(args, model, image, resolution=(11, 11), # how many f
 
     pos_H, pos_W, box_size = get_positions(image, resolution, size_ratio, method=method)
     data_transform = get_transforms(args)
-    image = image.to(device)
-    model = model.to(device)
+    # image = image.to(device)
+    # model = model.to(device)
 
     N_fixations = resolution[0] * resolution[1]
     proba_label = np.zeros((N_fixations, 1000))
