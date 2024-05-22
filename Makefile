@@ -15,6 +15,7 @@ push_meso:
 # bootstrap: rsync  -av -u --exclude *.pt  -e "ssh -p 8822 -i ~/.ssh/id-ring-ecdsa" /data/perrinet.l/research/science/JNJER_PhD/RetinoTopy/JeremieDaucePerrinet2024notebooks lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science
 # data rsync  -av -u --exclude *.pt  -e "ssh -p 8822 -i ~/.ssh/id-ring-ecdsa" /data/JNJER/Deep_learning/data/Imagenet_focus lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science/Deep_learning/data/
 # rsync  -av -u --exclude *.pt  -e "ssh -p 8822 -i ~/.ssh/id-ring-ecdsa" /data/JNJER/Deep_learning/data/Imagenet_bbox lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science/Deep_learning/data/
+# rsync  -av -u -e "ssh -p 8822 -i ~/.ssh/id-ring-ecdsa" lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science/Deep_learning/data/Imagenet_bbox  /Volumes/data/2024_archives/2024_science/Deep_learning/data/
 # DATADIR=/data/JNJER/Deep_learning
 # data_push_meso:
 # 	rsync $(MESO_OPTS) $(DATADIR)/Deep_learning $(MESO_URL)
