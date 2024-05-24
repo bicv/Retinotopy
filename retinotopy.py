@@ -58,8 +58,16 @@ def transparent_cmap(cmap, N=255):
     return mycmap
 
 
+# HACK to rename files
+# import glob
+# for old_file_name in glob.glob('cached_data/2024-05-14*'):
+#     new_file_name = old_file_name.replace('do_polar=True', 'retino').replace('do_polar=False', 'cartesian')
+#     print(old_file_name, new_file_name)
+#     os.rename(old_file_name, new_file_name)
+
 def get_filename(data_cache, datetag, data_set_type, model_name, do_polar):
-    return f'{data_cache}/{datetag}_{data_set_type}_{model_name}_{do_polar=}'
+    # return f'{data_cache}/{datetag}_{data_set_type}_{model_name}_{do_polar=}'
+    return f"{data_cache}/{datetag}_{data_set_type}_{model_name}_{'retino' if do_polar else 'cartesian'}"
 
 exts = ['pdf', 'svg', 'png']
 exts = ['pdf', 'png']
