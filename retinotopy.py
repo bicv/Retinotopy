@@ -57,6 +57,10 @@ def transparent_cmap(cmap, N=255):
     mycmap._lut[:, -1] = np.linspace(0, 1, N+4, endpoint=True)
     return mycmap
 
+
+def get_filename(data_cache, datetag, data_set_type, model_name, do_polar):
+    return f'{data_cache}/{datetag}_{data_set_type}_{model_name}_{do_polar=}'
+
 exts = ['pdf', 'svg', 'png']
 exts = ['pdf', 'png']
 #############################################################
