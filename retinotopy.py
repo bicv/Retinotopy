@@ -11,7 +11,7 @@ import time
 tic = time.time()
 from time import strftime, gmtime
 datetag = strftime("%Y-%m-%d", gmtime())
-datetag = '2024-05-14'
+datetag = '2024-05-24'
 #############################################################
 
 #############################################################
@@ -95,6 +95,21 @@ elif torch.cuda.is_available():
     print('Running on GPU : ', torch.cuda.get_device_name(), '#GPU=', torch.cuda.device_count())
 else:
     device = torch.device('cpu')
+
+# set seed function
+def set_seed(seed=None, seed_torch=True):
+  if seed is None:
+    seed = np.random.choice(2 ** 32)
+  random.seed(seed)
+  np.random.seed(seed)
+  if seed_torch:
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
+
+  print(f'Random seed {seed} has been set.')    
 #############################################################
 
 #############################################################
@@ -167,16 +182,16 @@ class Params:
     seed: int = 1998 # Set the seed for reproducibility 
     batch_size: int = batch_size # Set number of images per input batch
     batch_size_val: int = batch_size # Set number of images per input batch
-    lr: float = 0.00015 # Set learning rate 
-    momentum: float = .06 # Set the momentum
+    lr: float = 3.e-5 # Set learning rate 
+    momentum: float = .04 # Set the momentum
     beta2: float = 0 # Set the second momentum - use SGD if set to 0
-    rs_min: float = 0.05
-    rs_max: float = -4.95
+    rs_min: float = 0.00
+    rs_max: float = -5.00
     do_polar: bool = True # use a retinotopic mapping
     do_scratch: bool = False # whether we use pretrained weights or not during transfer learning
     do_rotation: bool = False # just use this for rotation attacks
     
-    torch.manual_seed(seed)
+    set_seed(seed=seed, seed_torch=True)
     
 args = Params()
 
@@ -267,6 +282,7 @@ class to_log_polar_tens:
         self.grid = grid
 
     def __call__(self, images):
+        # images = images.to(device)
         return nnf.grid_sample(images.unsqueeze(0), self.grid.unsqueeze(0), 
                                padding_mode="border", align_corners=False).squeeze(dim=0)
     
@@ -285,11 +301,11 @@ class ApplyMask:
         return images[:, :, ::] * self.mask
     
 
-# Resnet 101 datasets initialisation
+# Resnet datasets initialisation
 def get_transforms(args, im_mean=im_mean, im_std=im_std, angle_min=-180, angle_max=180):
 
-    grid = get_grid(args).to(device)
-    mask = make_mask(args.image_size).to(device)
+    grid = get_grid(args)#.to(device)
+    mask = make_mask(args.image_size)#.to(device)
 
     transforms = [                
         T.ToImage(),  # Convert to tensor, only needed if you had a PIL image
