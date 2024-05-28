@@ -19,6 +19,7 @@ datetag = '2024-05-24'
 import numpy as np
 import json
 from tqdm import tqdm
+import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.figure import SubplotParams
 subplotpars = SubplotParams(left=0.125, right=.95, bottom=0.25, top=.975, wspace=0.05, hspace=0.05,)
@@ -35,7 +36,7 @@ from matplotlib import font_manager
 try: # before https://matplotlib.org/stable/api/prev_api_changes/api_changes_3.9.0.html#removals
     cmap = plt.cm.get_cmap('viridis')
 except: # https://matplotlib.org/stable/api/prev_api_changes/api_changes_3.9.0.html#removals
-    cmap = plt.cm.colormaps['viridis']
+    cmap = matplotlib.colormaps['viridis']
 fig_width = 15
 fontsize = 14
 font = font_manager.FontProperties(weight='normal', size=fontsize)
