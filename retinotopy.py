@@ -32,7 +32,10 @@ plt.rc('ytick', labelsize=18)    # fontsize of the tick labels
 # matplotlib parameters
 from matplotlib import font_manager
 # Fig variables
-cmap = plt.cm.get_cmap('viridis')
+try: # before https://matplotlib.org/stable/api/prev_api_changes/api_changes_3.9.0.html#removals
+    cmap = plt.cm.get_cmap('viridis')
+except: # https://matplotlib.org/stable/api/prev_api_changes/api_changes_3.9.0.html#removals
+    cmap = plt.cm.colormaps['viridis']
 fig_width = 15
 fontsize = 14
 font = font_manager.FontProperties(weight='normal', size=fontsize)
@@ -100,7 +103,7 @@ else:
 def set_seed(seed=None, seed_torch=True):
   if seed is None:
     seed = np.random.choice(2 ** 32)
-  random.seed(seed)
+#   random.seed(seed)
   np.random.seed(seed)
   if seed_torch:
     torch.manual_seed(seed)
