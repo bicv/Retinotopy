@@ -120,7 +120,7 @@ elif HOST in ['inv-ope-de06', 'INV-133-DE01']: # CURIE , ada
     DATAROOT = '/data/JNJER/Deep_learning/data'
     num_workers = 2
 elif HOST in ['neo-ope-de04']: # Darwin  
-    DATAROOT = '/data_emmy/JNJER/Deep_learning/data'
+    DATAROOT = '/data/JNJER/Deep_learning/data'
     num_workers = 16
 elif HOST in ['brain-lid-004']: # GPU manu  
     DATAROOT = '/data/JNJER/Deep_learning/data'
