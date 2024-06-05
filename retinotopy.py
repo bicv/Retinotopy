@@ -1,12 +1,13 @@
 #############################################################
 # data_set_type = 'focus' # Select your root between : 'boxes', 'square', 'focus', 'full', 'square'
-data_set_types = ['full', 'bbox', 'focus', ]
+data_set_types = ['full', 'bbox', 'focus']
 data_set_linestyles = [':', '-.', '-', ]
 import os
 HOST = os.uname()[1]
 # print(f'{HOST=}')
 def touch(fname): open(fname, 'w').close()
 # import requests
+import math
 import time
 tic = time.time()
 from time import strftime, gmtime
@@ -104,7 +105,6 @@ else:
 def set_seed(seed=None, seed_torch=True):
   if seed is None:
     seed = np.random.choice(2 ** 32)
-#   random.seed(seed)
   np.random.seed(seed)
   if seed_torch:
     torch.manual_seed(seed)
@@ -156,7 +156,7 @@ elif 'Ahsoka' in HOST:
     num_workers = 24
     device = torch.device('cpu')
 elif 'DESKTOP-27VNO0E' in HOST: 
-    DATAROOT = '/mnt/d/Data/'
+    DATAROOT = '/mnt/d/Data'
     num_workers = 16
 else:
     raise ValueError(f'Unknown host {HOST}')
@@ -175,10 +175,13 @@ class Params:
 
     datetag: str = datetag # Set the date of the result's file
     loader: str = f'{DATAROOT}/Imagenet_urls_ILSVRC_2016.json' # File containing Imagenet's labels
-    # annotations: str = f'{DATAROOT}/animal_10k/ap-10k/annotations/clean_annotations.json' # File containing Imagenet's labels
+    annotations_animal: str = f'{DATAROOT}/Animal10k_annotations.json' # File containing Animak10k's labels
+    annotations: str = f'{DATAROOT}/LOC_val_solution_with_sizes.csv' # File containing Imagenets's labels
 
     # root: str = f'{DATAROOT}/Imagenet_{data_set_type}' # Directory containing images to perform the training
     folders: list = field(default_factory=lambda: ['val', 'train']) # Set the training and validation folders relative to the root
+    tasks: list = field(default_factory=lambda: ['animal', 'dog', 'cat', 'bird']) # Set the semantic link to perfome different tasks
+
     
     image_size: int = 224 #
     num_epochs: int = 2 # 
@@ -191,9 +194,18 @@ class Params:
     beta2: float = 0 # Set the second momentum - use SGD if set to 0
     rs_min: float = 0.00
     rs_max: float = -5.00
+    
     do_polar: bool = True # use a retinotopic mapping
+    do_resize: bool = True # resize the image to args.image_size
+    do_mask: bool = True # add a circular mask on the cartesian input to match the retino input (circular window) 
     do_scratch: bool = False # whether we use pretrained weights or not during transfer learning
     do_rotation: bool = False # just use this for rotation attacks
+    do_rot_train: bool = False # just use this for training with rotation 
+    resolution: tuple = (11,11) # resolution of the likelihood map
+    size_ratio = 0.3 # how much of the image to use relative to radius
+    do_saccade = False
+    angles = np.linspace(-180, 180, 50, dtype=int)   # combination of angles used for training or attacks
+    
     
     set_seed(seed=seed, seed_torch=True)
     
@@ -215,12 +227,18 @@ from nltk.corpus import wordnet as wn
 with open(args.loader) as json_file:
     Imagenet_urls_ILSVRC_2016 = json.load(json_file)
     
-# match = []
+match = {}
 labels = []
 revlabels_dico = {}
 labels_dico = {}
 i_labels_dico = {}
+
+for task in args.tasks:
+    match[task] = []
+    
 #----------------Get the label for the Imagenet categorization------------------------
+
+
 for i_img, img_id in enumerate(Imagenet_urls_ILSVRC_2016):
     syn_= wn.synset_from_pos_and_offset('n', int(img_id.replace('n','')))
     sem_ = syn_.hypernym_paths()[0]
@@ -229,16 +247,44 @@ for i_img, img_id in enumerate(Imagenet_urls_ILSVRC_2016):
     i_labels_dico[label] = i_img
     labels_dico[label] = img_id
     revlabels_dico[img_id] = label
-    # for i in np.arange(len(sem_)):
-    # for i in np.arange(len(sem_)):
-    #     if sem_[i].lemmas()[0].name() in 'animal' :
-    #         match.append(i_img)
+    for i in np.arange(len(sem_)):
+        for task in args.tasks:
+            if sem_[i].lemmas()[0].name() in task :
+                match[task].append(i_img)
+
+#---------------Get annotations from other the data set (Animal10k, ...)---------------
+def get_annotation(type):
+    if 'csv' in type:
+        with open(args.annotations, 'r') as csv_file:
+            return pd.read_csv(csv_file)
+    else:
+        return json.load(open(args.animal_annotations)) 
+
+
+def get_ground_true(args, image_name, annotations):
+    box_anot = annotations[annotations['ImageId'] == image_name]['PredictionString'].item().split(' ')
+    boxes = get_boxes_imagenet(box_anot)
+    origin_size = to_tuple(annotations[annotations['ImageId'] == image_name]['origin_size'].item())
+    ground_true = get_mask_from_bb(args.resolution, origin_size, boxes)
+    
+    
+    
+    if len(np.where(ground_true > 0)[0]) == 0 :
+        for boxe in boxes:
+            coord = (little_box(boxe, origin_size, args.resolution))
+            ground_true[coord[1],coord[0]] = 1
+            
+    ground_true_indices = np.where(ground_true.reshape(args.resolution[0]*args.resolution[1]) > 0)
+    
+    three_points = get_three_points(ground_true_indices, args.resolution)
+    return ground_true_indices, three_points, ground_true
+
 #############################################################
 
 
 #############################################################
 im_mean = np.array([0.485, 0.456, 0.406])
-im_std = np.array([0.229, 0.224, 0.225])
+im_std = np.array([0.229, 0.224, 0.225]) 
 
 def imgs_to_np(img_list, im_mean=im_mean, im_std=im_std):
     images = torchvision.utils.make_grid(img_list)
@@ -256,10 +302,15 @@ def imshow(img_list, im_mean=im_mean, im_std=im_std,
     ax.imshow(inp)
     ax.set_xticks([])
     ax.set_yticks([])
-    if title is not None: fig.suptitle(title)
+    if title != None: fig.suptitle(title)
     fig.set_facecolor(color='white')
     plt.tight_layout()
     
+def to_dev(args, item):
+    if hasattr(args, 'device'):
+        return item.to(args.device)
+    else:
+        return item
 
 def get_grid(args, endpoint=False):
 
@@ -270,24 +321,69 @@ def get_grid(args, endpoint=False):
         ts_ = torch.linspace(0, torch.pi*2, args.image_size+1)[:-1]     
     grid_xs = torch.outer(rs_, torch.cos(ts_)) 
     grid_ys = torch.outer(rs_, torch.sin(ts_))
-
-    return torch.stack((grid_xs, grid_ys), 2)
-
-
-# def to_retino_tens(images, grid): 
-#     grid = grid.repeat(images.shape[0],1,1,1)
-#     return nnf.grid_sample(images, grid, 
-#                            padding_mode="border", align_corners=False).squeeze(dim=0)
+    
+    return to_dev(args, torch.stack((grid_xs, grid_ys), 2))
 
 
+def get_start(start_value):
+    return torch.log2(torch.tensor(start_value)).item()
 
-class to_log_polar_tens:
-    def __init__(self, grid):
-        self.grid = grid
+def get_saccade_map(args, method='full'):
+    grids = []
+    if args.do_polar:
+        start = get_start(args.size_ratio)
+        rs_ = torch.logspace(start, args.rs_max, args.image_size, base = 2)
+        ts_ = torch.linspace(0, torch.pi*2, args.image_size+1)[:-1]  
+    
+        grid_x = torch.outer(rs_, torch.cos(ts_)) 
+        grid_y = torch.outer(rs_, torch.sin(ts_)) 
+        
+    else:
+        x = torch.linspace(-args.size_ratio, args.size_ratio, args.image_size)
+        y = torch.linspace(-args.size_ratio, args.size_ratio, args.image_size)
+        grid_y, grid_x = torch.meshgrid(x, y, indexing='ij')
+        
+    border = 1 if method == 'full' else 1-args.size_ratio
+
+    if max(args.resolution) == 1:
+        return torch.stack((grid_x, grid_y), 2).unsqueeze(dim=0)
+    
+    for i in np.linspace(-border, border, (args.resolution[0])):
+        for j in np.linspace(-border, border, (args.resolution[1])):
+            grids.append(torch.stack((grid_x+j, grid_y+i), 2))
+    
+    return torch.stack(grids)
+
+def multi_sacade_map(args):
+    all_ratios = np.linspace(1, args.size_ratio, round(args.resolution[0]/2))
+    grids_saccades = []
+    
+    for num, i in enumerate(np.linspace(1, args.resolution[0], round(args.resolution[0]/2), dtype=int)):
+        args.resolution = (i,i)
+        args.size_ratio = all_ratios[num]
+        grids_saccades.append(get_saccade_map(args, method='full').reshape(args.resolution[0], args.resolution[1],
+                                                                args.image_size, args.image_size, 2))
+    for i in np.linspace(0, len(grids_saccades)-2, len(grids_saccades)-1, dtype=int):
+        grids_saccades[i+1][1:-1,1:-1] = grids_saccades[i]
+    
+    return grids_saccades[i+1].reshape(args.resolution[0] * args.resolution[1],
+                                                                args.image_size, args.image_size, 2)
+
+def apply_grid(image, grid): 
+    image = image.repeat(grid.shape[0],1,1,1)
+    return nnf.grid_sample(image, grid, 
+                            padding_mode="border", align_corners=False).squeeze(dim=0)
+
+class to_log_polar_tens(object): 
+    def __init__(self, logPolar_grid):
+        self.grid = logPolar_grid
 
     def __call__(self, images):
-        # images = images.to(device)
-        return nnf.grid_sample(images.unsqueeze(0), self.grid.unsqueeze(0), 
+        try:
+            return nnf.grid_sample(images.unsqueeze(dim=0), self.grid.unsqueeze(dim=0), 
+                               padding_mode="border", align_corners=False).squeeze(dim=0)
+        except: 
+            return nnf.grid_sample(images, self.grid, 
                                padding_mode="border", align_corners=False).squeeze(dim=0)
     
 def make_mask(image_size, radius = 0.5):
@@ -303,60 +399,125 @@ class ApplyMask:
 
     def __call__(self, images):
         return images[:, :, ::] * self.mask
+
+class CleanRotations_class(object): 
+    def __init__(self, angles):
+        self.angles = angles
+
+    def __call__(self, image):
+        temp = []
+        for angle in self.angles:
+            temp.append(T.functional.rotate(image, angle=int(angle), expand = False)) 
+        return torch.stack(temp)
+
+def CleanRotations_function(image, mask, angles=[0]):
+    temp = []
+    for angle in angles:
+        temp.append(T.functional.rotate(image, angle=angle, expand = False))
+    temp = torch.stack(temp)
+    return temp[:,:,::]*torch.from_numpy(mask)#.to(device)
     
 
 # Resnet datasets initialisation
-def get_transforms(args, im_mean=im_mean, im_std=im_std, angle_min=-180, angle_max=180):
-
-    grid = get_grid(args)#.to(device)
-    mask = make_mask(args.image_size)#.to(device)
-
+def get_transforms(args, im_mean=im_mean, im_std=im_std):
+    
+    grid = get_grid(args)
+    
     transforms = [                
         T.ToImage(),  # Convert to tensor, only needed if you had a PIL image
         T.ToDtype(torch.float32, scale=True),  # Normalize expects float input
     ]   
 
-    if args.do_rotation: # used for augmentation and testing rotations
-        transforms.append(T.RandomRotation(degrees=(angle_min, angle_max), interpolation=interpolation, expand=False))
+    if args.do_rot_train: # used for augmentation and testing rotations
+        transforms.append(T.RandomRotation(degrees=(min(args.angles), max(args.angles)), interpolation=interpolation, expand=False))
 
-    if args.do_polar: 
+    if args.do_rotation:
+        args.batch_size_val, args.batch_size = 1, 1
+        grid = grid.repeat(len(args.angles), 1, 1, 1)
+        transforms.append(CleanRotations_class(args.angles))
+
+    if args.do_polar and not args.do_saccade: 
         transforms.append(to_log_polar_tens(grid))
-    else:
+
+    if args.do_resize and not args.do_polar:
         transforms.append(T.Resize(int(args.image_size), interpolation=interpolation, antialias=True))
         transforms.append(T.CenterCrop((int(args.image_size), int(args.image_size))))
+        
+
+    
+    if args.do_mask and not args.do_polar:
+        mask = to_dev(args, make_mask(args.image_size))
         transforms.append(ApplyMask(mask))
+
+    if args.do_saccade :
+        args.batch_size_val = 1
+        grid = get_saccade_map(args, method='full')
+        transforms.append(to_log_polar_tens(grid))
 
     transforms.append(T.Normalize(mean=im_mean, std=im_std)) # to normalize colors on the imagenet dataset
     
     return T.Compose(transforms)
 
-def datasets_transforms(args, im_mean=im_mean, im_std=im_std, angle_min=-180, angle_max=180,
+def datasets_transforms(args, im_mean=im_mean, im_std=im_std,
                         num_workers=num_workers, pin_memory=True, shuffle=True, verbose=True):
     """
     
     
-    if angle is not note, applies a random rotation
+    if angle is not none, applies a random rotation
     """
 
- 
     dataloaders = {}
     
     for folder in args.folders:
 
-        data_transform = get_transforms(args, im_mean=im_mean, im_std=im_std, angle_min=angle_min, angle_max=angle_max)
+        #args.do_rot_train = False if folder != 'train' else args.do_rot_train
+        data_transform = get_transforms(args, im_mean=im_mean, im_std=im_std)
 
         path = os.path.join(args.root, folder) # data path
-        image_dataset = torchvision.datasets.ImageFolder(path, transform=data_transform) # load the data
+        image_datasets = torchvision.datasets.ImageFolder(path, transform=data_transform) # load the data
 
         dataloaders[folder] = torch.utils.data.DataLoader(
-                                image_dataset, 
+                                image_datasets, 
                                 batch_size=args.batch_size if folder=='train' else args.batch_size_val,
                                 shuffle=shuffle, num_workers=num_workers, pin_memory=pin_memory
                         )
         if verbose: 
-            print(f"Loaded {len(image_dataset)} images under {folder}")  
+            print(f"Loaded {len(image_datasets)} images under {folder}")  
 
     return dataloaders
+
+
+def image_datasets_transforms(args, im_mean=im_mean, im_std=im_std,
+                        num_workers=num_workers, pin_memory=True, shuffle=True, verbose=True):
+
+    dataloaders = {}
+    
+    for folder in args.folders:
+
+        args.do_rot_train = False if folder != 'train' else args.do_rot_train
+        data_transform = get_transforms(args, im_mean=im_mean, im_std=im_std)
+
+        path = os.path.join(args.root, folder) # data path
+        image_datasets = torchvision.datasets.ImageFolder(path, transform=data_transform) # load the data
+
+        if verbose: 
+            print(f"Loaded {len(image_datasets)} images under {folder}")  
+
+    return image_datasets
+
+
+def get_tens_from_path(path):
+    transform_tens = T.Compose([ 
+                    T.ToImage(),
+                    T.ToDtype(torch.float32, scale=True),
+                    T.Normalize(mean=im_mean, std=im_std)])
+    image = cv2.imread(path)
+    image_np = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    image_tens = transform_tens(image_np)
+    imshow(image_tens)
+    return (image_np, image_tens)
+
+
 #############################################################
 
 #############################################################
@@ -476,8 +637,8 @@ def charge_model(model_name='resnet50', model_path=None, do_scratch=False, do_ci
 
 
 #############################################################
-size_ratio = 0.3 # how much of the image to use relative to radius
-def get_positions(image, resolution, size_ratio=size_ratio, method='full'):
+
+def get_positions(image, resolution, size_ratio=args.size_ratio, method='full'):
     _, H, W = image.shape
 
     min_size = np.min((H, W))
@@ -499,10 +660,11 @@ def get_positions(image, resolution, size_ratio=size_ratio, method='full'):
     return pos_H, pos_W, box_size
 
 def compute_likelihood_map(args, model, image, resolution=(11, 11), # how many fixation points to use
-                           size_ratio=size_ratio, # how much of the image to use relative to radius
+                           size_ratio=args.size_ratio, # how much of the image to use relative to radius
                            N_batch=100, method='full'):
 
     pos_H, pos_W, box_size = get_positions(image, resolution, size_ratio, method=method)
+    args.device = device
     data_transform = get_transforms(args)
     # image = image.to(device)
     # model = model.to(device)
@@ -526,6 +688,43 @@ def compute_likelihood_map(args, model, image, resolution=(11, 11), # how many f
         proba_label[idx_start:idx_stop, :] = outputs.detach().cpu().numpy()
         
     return pos_H, pos_W, proba_label
+
+def clean_resize(args, image):
+    image = T.Resize(args.image_size, interpolation=interpolation, antialias=True)(image)
+    return T.CenterCrop(int(args.image_size), int(args.image_size))(image)
+
+def rolling_map(args, image, log_grid, set_resolution=args.resolution, subsample_size=None):
+    if subsample_size is None:
+        subsample_size = min(image.shape[1], image.shape[2]) * args.size_ratio
+    preds_im = []
+    for i in np.linspace(0, (image.shape[1]-subsample_size), set_resolution[0], dtype=int):
+        for j in np.linspace(0, (image.shape[2]-subsample_size), set_resolution[1], dtype=int):
+            if args.polar:
+                preds_im.append(apply_grid(image[:,i:(subsample_size+i),j:(subsample_size+j)].unsqueeze(0), log_grid))
+            else:
+                preds_im.append(clean_resize(args, image[:,i:(subsample_size+i),j:(subsample_size+j)]))
+    return torch.stack(preds_im).reshape(set_resolution[0],set_resolution[1], 3, args.image_size, args.image_size).squeeze(0)
+
+def rolling_map_LP(args, origin_size, image, retino_grid):
+    all_image_size = np.linspace(min(origin_size), args.image_size, round(args.resolution[0]/2), dtype=int)
+    grids_images = []
+    for num, i in enumerate(np.linspace(1, args.resolution[0], round(args.resolution[0]/2), dtype=int)):
+        resolution_grid = (i,i)
+        subsample_size = all_image_size[num]
+        grids_images.append(rolling_map(args, image, retino_grid, resolution_grid, subsample_size))
+        
+    if args.do_polar:
+        grids_images[0] = apply_grid(image.unsqueeze(0), retino_grid)
+    else:
+        grids_images[0] = clean_resize(args, image)
+    for i in np.linspace(0, len(grids_images)-2, len(grids_images)-1, dtype=int):
+        grids_images[i+1][1:-1,1:-1] = grids_images[i]
+    
+    if args.do_polar:
+        return grids_images[i+1][:, :, ::]
+    else:
+        return grids_images[i+1][:, :, ::] * make_mask(args.image_size)
+
 #############################################################
 
 def enlarge_function(array, new_resolution):
@@ -671,13 +870,14 @@ def read_IoU(results_Iou):
         mean_Iou[tresh] = 0
         
     for im_ in results_Iou:
-        for tresh, Iou in enumerate(im_.split(' ')) :
-            mean_Iou[tresh] += float(Iou.replace(',', '').replace('[', '').replace(']', ''))
+        for tresh, Iou in enumerate(im_) :
+            mean_Iou[tresh] += float(Iou)
     
+    list_Iou = []
     for tresh in np.linspace(0,9,10, dtype=int):
         mean_Iou[tresh] /= len(results_Iou)
-    print(mean_Iou)
-    return mean_Iou
+        list_Iou.append(mean_Iou[tresh])
+    return mean_Iou, list_Iou
     
 def get_best_Iou(result_Iou, best_loc):
     best_Iou = []
