@@ -181,7 +181,7 @@ class Params:
     # root: str = f'{DATAROOT}/Imagenet_{data_set_type}' # Directory containing images to perform the training
     folders: list = field(default_factory=lambda: ['val', 'train']) # Set the training and validation folders relative to the root
     tasks: list = field(default_factory=lambda: ['animal', 'dog', 'cat', 'bird']) # Set the semantic link to perfome different tasks
-
+    
     
     image_size: int = 224 #
     num_epochs: int = 2 # 
@@ -202,9 +202,10 @@ class Params:
     do_rotation: bool = False # just use this for rotation attacks
     do_rot_train: bool = False # just use this for training with rotation 
     resolution: tuple = (11,11) # resolution of the likelihood map
-    size_ratio = 0.3 # how much of the image to use relative to radius
-    do_saccade = False
+    size_ratio: float = 0.3 # how much of the image to use relative to radius
+    do_saccade: bool = False
     angles = np.linspace(-180, 180, 50, dtype=int)   # combination of angles used for training or attacks
+    
     
     
     set_seed(seed=seed, seed_torch=True)
@@ -343,7 +344,7 @@ def get_saccade_map(args, method='full'):
         y = torch.linspace(-args.size_ratio, args.size_ratio, args.image_size)
         grid_y, grid_x = torch.meshgrid(x, y, indexing='ij')
         
-    border = 1 if method == 'full' else 1-args.size_ratio
+    border = .9 if method == 'full' else 1-args.size_ratio
 
     if max(args.resolution) == 1:
         return torch.stack((grid_x, grid_y), 2).unsqueeze(dim=0)
@@ -375,16 +376,21 @@ def apply_grid(image, grid):
                             padding_mode="border", align_corners=False).squeeze(dim=0)
 
 class to_log_polar_tens(object): 
-    def __init__(self, logPolar_grid):
+    def __init__(self, logPolar_grid, mode):
         self.grid = logPolar_grid
+        self.mode = mode
 
     def __call__(self, images):
-        try:
+        if self.mode == 'base':
             return nnf.grid_sample(images.unsqueeze(dim=0), self.grid.unsqueeze(dim=0), 
-                               padding_mode="border", align_corners=False).squeeze(dim=0)
-        except: 
+                               padding_mode="zeros", align_corners=False).squeeze(dim=0)
+        if self.mode == 'saccade':
+            return nnf.grid_sample(images.unsqueeze(dim=0).repeat(len(self.grid),1,1,1), self.grid,                                    
+                               padding_mode="zeros", align_corners=False).squeeze(dim=0)
+        else:
             return nnf.grid_sample(images, self.grid, 
-                               padding_mode="border", align_corners=False).squeeze(dim=0)
+                                padding_mode="zeros", align_corners=False).squeeze(dim=0)
+
     
 def make_mask(image_size, radius = 0.5):
     X, Y = np.meshgrid(np.linspace(-radius, radius, image_size, endpoint=True), 
@@ -437,7 +443,7 @@ def get_transforms(args, im_mean=im_mean, im_std=im_std):
         transforms.append(CleanRotations_class(args.angles))
 
     if args.do_polar and not args.do_saccade: 
-        transforms.append(to_log_polar_tens(grid))
+        transforms.append(to_log_polar_tens(grid, 'base'))
 
     if args.do_resize and not args.do_polar:
         transforms.append(T.Resize(int(args.image_size), interpolation=interpolation, antialias=True))
@@ -452,7 +458,7 @@ def get_transforms(args, im_mean=im_mean, im_std=im_std):
     if args.do_saccade :
         args.batch_size_val = 1
         grid = get_saccade_map(args, method='full')
-        transforms.append(to_log_polar_tens(grid))
+        transforms.append(to_log_polar_tens(grid, 'saccade'))
 
     transforms.append(T.Normalize(mean=im_mean, std=im_std)) # to normalize colors on the imagenet dataset
     
@@ -638,22 +644,22 @@ def charge_model(model_name='resnet50', model_path=None, do_scratch=False, do_ci
 
 #############################################################
 
-def get_positions(image, resolution, size_ratio=args.size_ratio, method='full'):
+def get_positions(args, image, method='full'):
     _, H, W = image.shape
 
     min_size = np.min((H, W))
-    box_size = int(min_size*size_ratio)
+    box_size = int(min_size*args.size_ratio)
     if method=='valid':
         if H < W:
             shift = (0, (W-H)/2)
         else:
             shift = ((H-W)/2, 0)
 
-        pos_h = np.linspace(shift[0]+box_size/2, min_size+shift[0]-box_size/2, resolution[0], endpoint=True)
-        pos_w = np.linspace(shift[1]+box_size/2, min_size+shift[1]-box_size/2, resolution[1], endpoint=True)
+        pos_h = np.linspace(shift[0]+box_size/2, min_size+shift[0]-box_size/2, args.resolution[0], endpoint=True)
+        pos_w = np.linspace(shift[1]+box_size/2, min_size+shift[1]-box_size/2, args.resolution[1], endpoint=True)
     else:
-        pos_h = np.linspace(0, H, resolution[0]+2, endpoint=True)[1:-1]
-        pos_w = np.linspace(0, W, resolution[1]+2, endpoint=True)[1:-1]
+        pos_h = np.linspace(0, H, args.resolution[0]+2, endpoint=True)[1:-1]
+        pos_w = np.linspace(0, W, args.resolution[1]+2, endpoint=True)[1:-1]
 
     pos_H, pos_W = np.meshgrid(pos_h, pos_w)
 
@@ -663,7 +669,7 @@ def compute_likelihood_map(args, model, image, resolution=(11, 11), # how many f
                            size_ratio=args.size_ratio, # how much of the image to use relative to radius
                            N_batch=100, method='full'):
 
-    pos_H, pos_W, box_size = get_positions(image, resolution, size_ratio, method=method)
+    pos_H, pos_W, box_size = get_positions(args, image, method=method)
     args.device = device
     data_transform = get_transforms(args)
     # image = image.to(device)
@@ -682,16 +688,28 @@ def compute_likelihood_map(args, model, image, resolution=(11, 11), # how many f
                 h, w = int(h), int(w)
                 cropped_image = crop(image, h-box_size//2, w-box_size//2, box_size, box_size)
                 cropped_images[i_fixation, ...] = data_transform(cropped_image)
-
+            
+            
             outputs = torch.nn.functional.softmax(model(cropped_images), dim=1)
 
         proba_label[idx_start:idx_stop, :] = outputs.detach().cpu().numpy()
+    if torch.cuda.is_available(): torch.cuda.empty_cache()
         
     return pos_H, pos_W, proba_label
 
 def clean_resize(args, image):
     image = T.Resize(args.image_size, interpolation=interpolation, antialias=True)(image)
     return T.CenterCrop(int(args.image_size), int(args.image_size))(image)
+
+def get_batch(args, model, full_image, size=100):
+    N_fixations = args.resolution[0] * args.resolution[1]
+    proba_label = np.zeros((N_fixations, 1000))
+    for idx_start in np.arange(0, N_fixations, size):
+        idx_stop = np.min((idx_start+args.batch_size, N_fixations))
+        with torch.no_grad():
+            outputs = torch.nn.functional.softmax(model(full_image[idx_start:idx_stop]), dim=1)
+        proba_label[idx_start:idx_stop, :] = outputs.detach().cpu().numpy()
+    return proba_label
 
 def rolling_map(args, image, log_grid, set_resolution=args.resolution, subsample_size=None):
     if subsample_size is None:
@@ -890,7 +908,7 @@ def get_dist(results_dist):
     
     distances = {0:[], 1:[]}
     for dist in results_dist:
-        for pos, dist_ in enumerate(dist.split(' ')) :
+        for pos, dist_ in enumerate(dist) :
             distances[pos].append((float(dist_.replace(',', '').replace('[', '').replace(']', ''))))
     return [np.zeros(len(distances[0])), np.array(distances[0]), np.array(distances[1])]
     
