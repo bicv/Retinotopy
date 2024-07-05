@@ -204,6 +204,7 @@ class Params:
     resolution: tuple = (11,11) # resolution of the likelihood map
     size_ratio: float = 0.3 # how much of the image to use relative to radius
     do_saccade: bool = False
+    method: str = 'full' #select sampling for mapping between full = with border & valid = no border
     angles = np.linspace(-180, 180, 50, dtype=int)   # combination of angles used for training or attacks
     
     
@@ -262,23 +263,6 @@ def get_annotation(type):
         return json.load(open(args.animal_annotations)) 
 
 
-def get_ground_true(args, image_name, annotations):
-    box_anot = annotations[annotations['ImageId'] == image_name]['PredictionString'].item().split(' ')
-    boxes = get_boxes_imagenet(box_anot)
-    origin_size = to_tuple(annotations[annotations['ImageId'] == image_name]['origin_size'].item())
-    ground_true = get_mask_from_bb(args.resolution, origin_size, boxes)
-    
-    
-    
-    if len(np.where(ground_true > 0)[0]) == 0 :
-        for boxe in boxes:
-            coord = (little_box(boxe, origin_size, args.resolution))
-            ground_true[coord[1],coord[0]] = 1
-            
-    ground_true_indices = np.where(ground_true.reshape(args.resolution[0]*args.resolution[1]) > 0)
-    
-    three_points = get_three_points(ground_true_indices, args.resolution)
-    return ground_true_indices, three_points, ground_true
 
 #############################################################
 
@@ -329,7 +313,7 @@ def get_grid(args, endpoint=False):
 def get_start(start_value):
     return torch.log2(torch.tensor(start_value)).item()
 
-def get_saccade_map(args, method='full'):
+def get_saccade_map(args):
     grids = []
     if args.do_polar:
         start = get_start(args.size_ratio)
@@ -344,7 +328,7 @@ def get_saccade_map(args, method='full'):
         y = torch.linspace(-args.size_ratio, args.size_ratio, args.image_size)
         grid_y, grid_x = torch.meshgrid(x, y, indexing='ij')
         
-    border = .9 if method == 'full' else 1-args.size_ratio
+    border = .9 if args.method == 'full' else 1-args.size_ratio
 
     if max(args.resolution) == 1:
         return torch.stack((grid_x, grid_y), 2).unsqueeze(dim=0)
@@ -355,15 +339,19 @@ def get_saccade_map(args, method='full'):
     
     return torch.stack(grids)
 
+def round_up(num, denum):
+    return num//denum + num%denum
+
+
 def multi_sacade_map(args):
-    all_ratios = np.linspace(1, args.size_ratio, round(args.resolution[0]/2))
+    all_ratios = np.linspace(1, args.size_ratio, round_up(args.resolution[0],2))
     grids_saccades = []
-    
-    for num, i in enumerate(np.linspace(1, args.resolution[0], round(args.resolution[0]/2), dtype=int)):
+    for num, i in enumerate(np.linspace(1, args.resolution[0], round_up(args.resolution[0],2), dtype=int)):
         args.resolution = (i,i)
         args.size_ratio = all_ratios[num]
-        grids_saccades.append(get_saccade_map(args, method='full').reshape(args.resolution[0], args.resolution[1],
+        grids_saccades.append(get_saccade_map(args).reshape(args.resolution[0], args.resolution[1],
                                                                 args.image_size, args.image_size, 2))
+
     for i in np.linspace(0, len(grids_saccades)-2, len(grids_saccades)-1, dtype=int):
         grids_saccades[i+1][1:-1,1:-1] = grids_saccades[i]
     
@@ -410,10 +398,12 @@ class CleanRotations_class(object):
     def __init__(self, angles):
         self.angles = angles
 
-    def __call__(self, image):
+    def __call__(self, images):
         temp = []
-        for angle in self.angles:
-            temp.append(T.functional.rotate(image, angle=int(angle), expand = False)) 
+        images = images.unsqueeze(dim=0) if len(images) == 1 else images
+        for image in images:
+            for angle in self.angles:
+                temp.append(T.functional.rotate(image, angle=int(angle), expand = False)) 
         return torch.stack(temp)
 
 def CleanRotations_function(image, mask, angles=[0]):
@@ -437,7 +427,7 @@ def get_transforms(args, im_mean=im_mean, im_std=im_std):
     if args.do_rot_train: # used for augmentation and testing rotations
         transforms.append(T.RandomRotation(degrees=(min(args.angles), max(args.angles)), interpolation=interpolation, expand=False))
 
-    if args.do_rotation:
+    if args.do_rotation and not args.do_saccade:
         args.batch_size_val, args.batch_size = 1, 1
         grid = grid.repeat(len(args.angles), 1, 1, 1)
         transforms.append(CleanRotations_class(args.angles))
@@ -445,20 +435,24 @@ def get_transforms(args, im_mean=im_mean, im_std=im_std):
     if args.do_polar and not args.do_saccade: 
         transforms.append(to_log_polar_tens(grid, 'base'))
 
-    if args.do_resize and not args.do_polar:
+    if args.do_resize and not (args.do_polar or args.do_saccade):
         transforms.append(T.Resize(int(args.image_size), interpolation=interpolation, antialias=True))
         transforms.append(T.CenterCrop((int(args.image_size), int(args.image_size))))
         
-
     
-    if args.do_mask and not args.do_polar:
+    if args.do_mask and not (args.do_polar or args.do_saccade):
         mask = to_dev(args, make_mask(args.image_size))
         transforms.append(ApplyMask(mask))
 
     if args.do_saccade :
         args.batch_size_val = 1
-        grid = get_saccade_map(args, method='full')
+        grid = to_dev(args, multi_sacade_map(args))
+        #grid = to_dev(args, get_saccade_map(args))
         transforms.append(to_log_polar_tens(grid, 'saccade'))
+
+        if not args.do_polar:
+            mask = to_dev(args, make_mask(args.image_size))
+            transforms.append(ApplyMask(mask))
 
     transforms.append(T.Normalize(mean=im_mean, std=im_std)) # to normalize colors on the imagenet dataset
     
@@ -644,12 +638,12 @@ def charge_model(model_name='resnet50', model_path=None, do_scratch=False, do_ci
 
 #############################################################
 
-def get_positions(args, image, method='full'):
+def get_positions(args, image):
     _, H, W = image.shape
 
     min_size = np.min((H, W))
     box_size = int(min_size*args.size_ratio)
-    if method=='valid':
+    if args.method=='valid':
         if H < W:
             shift = (0, (W-H)/2)
         else:
@@ -667,9 +661,9 @@ def get_positions(args, image, method='full'):
 
 def compute_likelihood_map(args, model, image, resolution=(11, 11), # how many fixation points to use
                            size_ratio=args.size_ratio, # how much of the image to use relative to radius
-                           N_batch=100, method='full'):
+                           N_batch=100):
 
-    pos_H, pos_W, box_size = get_positions(args, image, method=method)
+    pos_H, pos_W, box_size = get_positions(args, image)
     args.device = device
     data_transform = get_transforms(args)
     # image = image.to(device)
@@ -688,10 +682,9 @@ def compute_likelihood_map(args, model, image, resolution=(11, 11), # how many f
                 h, w = int(h), int(w)
                 cropped_image = crop(image, h-box_size//2, w-box_size//2, box_size, box_size)
                 cropped_images[i_fixation, ...] = data_transform(cropped_image)
-            
-            
+                
             outputs = torch.nn.functional.softmax(model(cropped_images), dim=1)
-
+        
         proba_label[idx_start:idx_stop, :] = outputs.detach().cpu().numpy()
     if torch.cuda.is_available(): torch.cuda.empty_cache()
         
@@ -705,7 +698,7 @@ def get_batch(args, model, full_image, size=100):
     N_fixations = args.resolution[0] * args.resolution[1]
     proba_label = np.zeros((N_fixations, 1000))
     for idx_start in np.arange(0, N_fixations, size):
-        idx_stop = np.min((idx_start+args.batch_size, N_fixations))
+        idx_stop = np.min((idx_start+size, N_fixations))
         with torch.no_grad():
             outputs = torch.nn.functional.softmax(model(full_image[idx_start:idx_stop]), dim=1)
         proba_label[idx_start:idx_stop, :] = outputs.detach().cpu().numpy()
@@ -788,10 +781,10 @@ def to_tuple(str_size):
     return (int(str_size.split(' ')[0].split('(')[1].split(',')[0]),
             int(str_size.split(' ')[1].split(')')[0]))
 
-def get_boxes_imagenet(box_anot):
+def get_boxes_imagenet(box_anot): # function to get a list of dict for each box
     
     box = []
-    for i in np.arange(len(box_anot)//5) :
+    for i in np.arange(len(box_anot)//5) :  # iterate for each box
         box.append({'ymin' : int(box_anot[(i*5)+1]),
                      'xmin' : int(box_anot[(i*5)+2]),
                      'ymax' : int(box_anot[(i*5)+3]),
@@ -805,6 +798,11 @@ def get_mask_from_bb(target_size, orig_size, boxes):
         mask[box['ymin']:box['ymax'],box['xmin']:box['xmax']] = 1 # fill with white pixels
     return enlarge_function(mask, target_size).T
 
+def store_pandas(df, df_):
+    if df is None:
+        return df_
+    else:
+        return(pd.concat([df, df_], ignore_index=True))
 
 def normalize_array(arr):
     # Convert the array to float type (if not already)
@@ -870,6 +868,32 @@ def get_like_point(heatmap, resolution, three_points):
     return mid_point, in_point, ext_point
 
 
+def get_ground_true(args, image_name, annotations):
+    box_anot = annotations[annotations['ImageId'] == image_name]['PredictionString'].item().split(' ')
+    boxes = get_boxes_imagenet(box_anot)
+    origin_size = to_tuple(annotations[annotations['ImageId'] == image_name]['origin_size'].item())
+    ground_true = get_mask_from_bb(args.resolution, origin_size, boxes)
+    
+    
+    
+    if len(np.where(ground_true > 0)[0]) == 0 :
+        try:
+            for boxe in boxes:
+                coord = (little_box(boxe, origin_size, args.resolution))
+                ground_true[coord[1],coord[0]] = 1
+        except:
+                return None, None, np.ones(1) # return None for value we cant caculate and 1 to stop at the next condition
+            
+    ground_true_indices = np.where(ground_true.reshape(args.resolution[0]*args.resolution[1]) > 0)
+    
+    three_points = get_three_points(ground_true_indices, args.resolution)
+    
+    return ground_true_indices, three_points, ground_true
+
+def th_delete(tensor, indices):
+    mask = torch.ones(tensor.numel(), dtype=torch.bool)
+    mask[indices] = False
+    return tensor[mask]
 
 def get_IoU(heatmap, ground_true):
     IoU = []
