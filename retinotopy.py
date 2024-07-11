@@ -203,7 +203,8 @@ class Params:
     do_rot_train: bool = False # just use this for training with rotation 
     resolution: tuple = (11,11) # resolution of the likelihood map
     size_ratio: float = 0.3 # how much of the image to use relative to radius
-    do_saccade: bool = False
+    do_saccade: bool = False # True to get multiple pov for eah image in the data set transform
+    do_zoom: bool = False # True to apply a zoom (range from args.size_ratio to (2 + args.size_ratio) +/- 0.1 )
     method: str = 'full' #select sampling for mapping between full = with border & valid = no border
     angles = np.linspace(-180, 180, 50, dtype=int)   # combination of angles used for training or attacks
     
@@ -309,6 +310,27 @@ def get_grid(args, endpoint=False):
     
     return to_dev(args, torch.stack((grid_xs, grid_ys), 2))
 
+def get_zoom_grid(args):
+    grids = []
+    for i in np.arange(args.size_ratio, (2 + args.size_ratio), 0.1):
+        if args.do_polar:
+            start = get_start(args.size_ratio)
+            rs_ = torch.logspace(start, args.rs_max, args.image_size, base = 2)
+            ts_ = torch.linspace(0, torch.pi*2, args.image_size+1)[:-1]  
+        
+            grid_x = torch.outer(rs_, torch.cos(ts_)) 
+            grid_y = torch.outer(rs_, torch.sin(ts_)) 
+            
+        else:
+            x = torch.linspace(-args.size_ratio, args.size_ratio, args.image_size)
+            y = torch.linspace(-args.size_ratio, args.size_ratio, args.image_size)
+            grid_y, grid_x = torch.meshgrid(x, y, indexing='ij')
+
+        
+        grids.append(torch.stack((grid_x, grid_y), 2))
+        
+    return torch.stack(grids)
+
 
 def get_start(start_value):
     return torch.log2(torch.tensor(start_value)).item()
@@ -372,7 +394,7 @@ class to_log_polar_tens(object):
         if self.mode == 'base':
             return nnf.grid_sample(images.unsqueeze(dim=0), self.grid.unsqueeze(dim=0), 
                                padding_mode="zeros", align_corners=False).squeeze(dim=0)
-        if self.mode == 'saccade':
+        if self.mode == 'multiple':
             return nnf.grid_sample(images.unsqueeze(dim=0).repeat(len(self.grid),1,1,1), self.grid,                                    
                                padding_mode="zeros", align_corners=False).squeeze(dim=0)
         else:
@@ -432,15 +454,24 @@ def get_transforms(args, im_mean=im_mean, im_std=im_std):
         grid = grid.repeat(len(args.angles), 1, 1, 1)
         transforms.append(CleanRotations_class(args.angles))
 
-    if args.do_polar and not args.do_saccade: 
+    if args.do_zoom and not args.do_saccade:
+        args.batch_size_val, args.batch_size = 1, 1
+        grid_zoom = to_dev(args, get_zoom_grid(args))
+        transforms.append(to_log_polar_tens(grid_zoom, 'multiple'))
+        
+        if not args.do_polar:
+            mask = to_dev(args, make_mask(args.image_size))
+            transforms.append(ApplyMask(mask))
+
+    if args.do_polar and not (args.do_saccade or args.do_zoom): 
         transforms.append(to_log_polar_tens(grid, 'base'))
 
-    if args.do_resize and not (args.do_polar or args.do_saccade):
+    if args.do_resize and not (args.do_polar or args.do_saccade or args.do_zoom):
         transforms.append(T.Resize(int(args.image_size), interpolation=interpolation, antialias=True))
         transforms.append(T.CenterCrop((int(args.image_size), int(args.image_size))))
         
     
-    if args.do_mask and not (args.do_polar or args.do_saccade):
+    if args.do_mask and not (args.do_polar or args.do_saccade or args.do_zoom):
         mask = to_dev(args, make_mask(args.image_size))
         transforms.append(ApplyMask(mask))
 
@@ -448,7 +479,7 @@ def get_transforms(args, im_mean=im_mean, im_std=im_std):
         args.batch_size_val = 1
         grid = to_dev(args, multi_sacade_map(args))
         #grid = to_dev(args, get_saccade_map(args))
-        transforms.append(to_log_polar_tens(grid, 'saccade'))
+        transforms.append(to_log_polar_tens(grid, 'multiple'))
 
         if not args.do_polar:
             mask = to_dev(args, make_mask(args.image_size))
@@ -868,12 +899,22 @@ def get_like_point(heatmap, resolution, three_points):
     return mid_point, in_point, ext_point
 
 
-def get_ground_true(args, image_name, annotations):
-    box_anot = annotations[annotations['ImageId'] == image_name]['PredictionString'].item().split(' ')
-    boxes = get_boxes_imagenet(box_anot)
-    origin_size = to_tuple(annotations[annotations['ImageId'] == image_name]['origin_size'].item())
-    ground_true = get_mask_from_bb(args.resolution, origin_size, boxes)
+def get_ground_true(args, image_name, annotations, mode):
     
+    if mode == 'Imagenet':
+        box_anot = annotations[annotations['ImageId'] == image_name]['PredictionString'].item().split(' ')
+        boxes = get_boxes_imagenet(box_anot)
+        origin_size = to_tuple(annotations[annotations['ImageId'] == image_name]['origin_size'].item())
+        ground_true = get_mask_from_bb(args.resolution, origin_size, boxes)
+    
+    else: #Get ground true for Animal 10k
+        boxes = annotations[image_name]['keypoints']
+        origin_size = [annotations[image_name]['image_info']['height'], annotations[image_name]['image_info']['width']]
+        brut_array = to_heatmap(boxes, origin_size)
+        normalized_array = normalize_array(brut_array)
+        ground_true = enlarge_function(normalized_array.reshape(origin_size), resolution) > 0.2
+        
+        
     
     
     if len(np.where(ground_true > 0)[0]) == 0 :
@@ -897,7 +938,8 @@ def th_delete(tensor, indices):
 
 def get_IoU(heatmap, ground_true):
     IoU = []
-    for tresh in np.linspace(0,.4,10):
+    heatmap = heatmap.numpy()
+    for tresh in np.linspace(0,1,10):
         n_heat = len(np.where(heatmap > tresh )[0])
         n_true = len(np.where(ground_true > 0 )[0])
         n_heat_in = len(np.where(heatmap[(heatmap > tresh) & (ground_true > 0 )])[0])
@@ -936,7 +978,12 @@ def get_dist(results_dist):
             distances[pos].append((float(dist_.replace(',', '').replace('[', '').replace(']', ''))))
     return [np.zeros(len(distances[0])), np.array(distances[0]), np.array(distances[1])]
     
-    
+
+def get_top_indices(tensor, k=5):
+    try : 
+        return torch.topk(tensor, k=k)[1]
+    except:
+        return torch.topk(tensor, k=1)[1]   
 
 def euclidean_distance(point_1, point_2):
 
@@ -956,3 +1003,10 @@ def euclidean_distance(point_1, point_2):
     x1, y1 = point_1
     x2, y2 = point_2
     return math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+
+#2D Gaussian function
+def twoD_Gaussian(x, y, xo, yo, sigma_x, sigma_y):
+    a = 1./(2*sigma_x**2) + 1./(2*sigma_y**2)
+    c = 1./(2*sigma_x**2) + 1./(2*sigma_y**2)
+    g = np.exp( - (a*((x-xo)**2) + c*((y-yo)**2)))
+    return g.ravel()
