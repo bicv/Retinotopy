@@ -312,9 +312,9 @@ def get_grid(args, endpoint=False):
 
 def get_zoom_grid(args):
     grids = []
-    for i in np.arange(args.size_ratio, (2 + args.size_ratio), 0.1):
+    for ratio in np.arange(args.size_ratio, (10 + args.size_ratio), 0.1):
         if args.do_polar:
-            start = get_start(args.size_ratio)
+            start = get_start(ratio)
             rs_ = torch.logspace(start, args.rs_max, args.image_size, base = 2)
             ts_ = torch.linspace(0, torch.pi*2, args.image_size+1)[:-1]  
         
@@ -322,8 +322,8 @@ def get_zoom_grid(args):
             grid_y = torch.outer(rs_, torch.sin(ts_)) 
             
         else:
-            x = torch.linspace(-args.size_ratio, args.size_ratio, args.image_size)
-            y = torch.linspace(-args.size_ratio, args.size_ratio, args.image_size)
+            x = torch.linspace(-ratio, ratio, args.image_size)
+            y = torch.linspace(-ratio, ratio, args.image_size)
             grid_y, grid_x = torch.meshgrid(x, y, indexing='ij')
 
         
@@ -422,7 +422,7 @@ class CleanRotations_class(object):
 
     def __call__(self, images):
         temp = []
-        images = images.unsqueeze(dim=0) if len(images) == 1 else images
+        images = images.unsqueeze(dim=0) if len(images) == 3 else images
         for image in images:
             for angle in self.angles:
                 temp.append(T.functional.rotate(image, angle=int(angle), expand = False)) 
@@ -440,6 +440,7 @@ def CleanRotations_function(image, mask, angles=[0]):
 def get_transforms(args, im_mean=im_mean, im_std=im_std):
     
     grid = get_grid(args)
+    grid_zoom = get_zoom_grid(args)
     
     transforms = [                
         T.ToImage(),  # Convert to tensor, only needed if you had a PIL image
@@ -456,7 +457,7 @@ def get_transforms(args, im_mean=im_mean, im_std=im_std):
 
     if args.do_zoom and not args.do_saccade:
         args.batch_size_val, args.batch_size = 1, 1
-        grid_zoom = to_dev(args, get_zoom_grid(args))
+        grid_zoom = to_dev(args, grid_zoom)
         transforms.append(to_log_polar_tens(grid_zoom, 'multiple'))
         
         if not args.do_polar:
