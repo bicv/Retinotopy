@@ -119,7 +119,7 @@ def set_seed(seed=None, seed_torch=True):
 #############################################################
 data_cache = 'cached_data'
 interpolation = T.InterpolationMode.BILINEAR
-batch_size = 50
+batch_size = 150
 if '.cluster' in HOST: # mesocentre
     DATAROOT = '/scratch/lperrinet/science/Deep_learning/data'
     num_workers = 8
@@ -157,7 +157,8 @@ elif 'Ahsoka' in HOST:
     device = torch.device('cpu')
 elif 'DESKTOP-27VNO0E' in HOST: 
     DATAROOT = '/mnt/d/Data'
-    num_workers = 16
+    batch_size = 50
+    num_workers = 8
 else:
     raise ValueError(f'Unknown host {HOST}')
 
@@ -206,7 +207,7 @@ class Params:
     do_saccade: bool = False # True to get multiple pov for eah image in the data set transform
     do_zoom: bool = False # True to apply a zoom (range from args.size_ratio to (2 + args.size_ratio) +/- 0.1 )
     method: str = 'full' #select sampling for mapping between full = with border & valid = no border
-    angles = np.linspace(-180, 180, 50, dtype=int)   # combination of angles used for training or attacks
+    angles = np.linspace(-180, 180, 100, dtype=int)   # combination of angles used for training or attacks
     
     
     
@@ -465,7 +466,8 @@ def get_transforms(args, im_mean=im_mean, im_std=im_std):
             transforms.append(ApplyMask(mask))
 
     if args.do_polar and not (args.do_saccade or args.do_zoom): 
-        transforms.append(to_log_polar_tens(grid, 'base'))
+        
+        transforms.append(to_log_polar_tens(grid, ('base' if not args.do_rotation else None)))
 
     if args.do_resize and not (args.do_polar or args.do_saccade or args.do_zoom):
         transforms.append(T.Resize(int(args.image_size), interpolation=interpolation, antialias=True))
@@ -597,6 +599,7 @@ def train_model(args, model, dataloaders, each_steps=64, verbose=True):
     for i_epoch in range(args.num_epochs):
         i_image = 0
         for i_step, (images, labels) in enumerate(dataloaders['train']):
+            imshow(images[0:10])
             images, labels = images.to(device), labels.to(device)
             total_image += len(images)
             i_image += len(images)
@@ -966,21 +969,21 @@ def read_IoU(results_Iou):
     
 def get_best_Iou(result_Iou, best_loc):
     best_Iou = []
-    for im_ in results['Iou']:
-        Iou = im_.split(' ')[1]
-        best_Iou.append(float(Iou.replace(',', '').replace('[', '').replace(']', '')))
+    for Iou in result_Iou:
+        best_Iou.append(float(Iou[best_loc]))
     return best_Iou
 
 def get_dist(results_dist):
     
     distances = {0:[], 1:[]}
     for dist in results_dist:
-        for pos, dist_ in enumerate(dist) :
+        for pos, dist_ in enumerate(dist.split(' ')) :
             distances[pos].append((float(dist_.replace(',', '').replace('[', '').replace(']', ''))))
     return [np.zeros(len(distances[0])), np.array(distances[0]), np.array(distances[1])]
     
 
 def get_top_indices(tensor, k=5):
+
     try : 
         return torch.topk(tensor, k=k)[1]
     except:
@@ -1005,9 +1008,18 @@ def euclidean_distance(point_1, point_2):
     x2, y2 = point_2
     return math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
 
-#2D Gaussian function
-def twoD_Gaussian(x, y, xo, yo, sigma_x, sigma_y):
+
+def twoD_Gaussian(x, y, xo, yo, sigma_x, sigma_y): #2D Gaussian function
     a = 1./(2*sigma_x**2) + 1./(2*sigma_y**2)
     c = 1./(2*sigma_x**2) + 1./(2*sigma_y**2)
     g = np.exp( - (a*((x-xo)**2) + c*((y-yo)**2)))
     return g.ravel()
+
+
+def to_heatmap(key_points, shape):  # a function use to apply 2d gaussian at designeted position (keypoints) on a image
+    y, x = np.mgrid[0:shape[0], 0:shape[1]] # get x and y extents
+    Gauss = np.zeros([shape[0]*shape[1]])
+    for i in key_points:
+        x0, y0 = i
+        Gauss += twoD_Gaussian(x, y, x0, y0, .2*x.max(), .2*y.max())
+    return Gauss
