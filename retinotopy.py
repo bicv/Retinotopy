@@ -13,6 +13,7 @@ tic = time.time()
 from time import strftime, gmtime
 datetag = strftime("%Y-%m-%d", gmtime())
 datetag = '2024-05-24'
+import cv2
 #############################################################
 
 #############################################################
@@ -262,7 +263,7 @@ def get_annotation(type):
         with open(args.annotations, 'r') as csv_file:
             return pd.read_csv(csv_file)
     else:
-        return json.load(open(args.animal_annotations)) 
+        return json.load(open(args.annotations_animal)) 
 
 
 
@@ -544,7 +545,8 @@ def get_tens_from_path(path):
     transform_tens = T.Compose([ 
                     T.ToImage(),
                     T.ToDtype(torch.float32, scale=True),
-                    T.Normalize(mean=im_mean, std=im_std)])
+                    T.Normalize(mean=im_mean, std=im_std)
+    ])
     image = cv2.imread(path)
     image_np = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     image_tens = transform_tens(image_np)
