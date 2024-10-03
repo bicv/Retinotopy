@@ -1,6 +1,6 @@
 #############################################################
 # data_set_type = 'focus' # Select your root between : 'boxes', 'square', 'focus', 'full', 'square'
-data_set_types = ['full', 'bbox', 'focus']
+data_set_types = ['raw', 'full', 'bbox']
 data_set_linestyles = [':', '-.', '-', ]
 import os
 HOST = os.uname()[1]
@@ -25,7 +25,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.figure import SubplotParams
 subplotpars = SubplotParams(left=0.125, right=.95, bottom=0.25, top=.975, wspace=0.05, hspace=0.05,)
-
 # import seaborn as sns
 # import sklearn.metrics
 
@@ -120,7 +119,7 @@ def set_seed(seed=None, seed_torch=True):
 #############################################################
 data_cache = 'cached_data'
 interpolation = T.InterpolationMode.BILINEAR
-batch_size = 150
+batch_size = 75
 if '.cluster' in HOST: # mesocentre
     DATAROOT = '/scratch/lperrinet/science/Deep_learning/data'
     num_workers = 8
@@ -156,10 +155,21 @@ elif 'Ahsoka' in HOST:
     DATAROOT = '/Volumes/data/2024_archives/2024_science/Deep_learning/data'
     num_workers = 24
     device = torch.device('cpu')
+    
 elif 'DESKTOP-27VNO0E' in HOST: 
     DATAROOT = '/mnt/d/Data'
     batch_size = 50
     num_workers = 8
+
+elif 'Edison' in HOST: 
+    
+    if os.path.isdir('/media/jnjer/Transcend/Data'):
+        DATAROOT = '/media/jnjer/Transcend/Data'
+    else:
+        DATAROOT = '/home/jnjer/PhD/JNJER_PhD/data'
+    batch_size = 50
+    num_workers = 4
+    
 else:
     raise ValueError(f'Unknown host {HOST}')
 
@@ -191,24 +201,27 @@ class Params:
     seed: int = 1998 # Set the seed for reproducibility 
     batch_size: int = batch_size # Set number of images per input batch
     batch_size_val: int = batch_size # Set number of images per input batch
-    lr: float = 3.e-5 # Set learning rate 
-    momentum: float = .04 # Set the momentum
+    lr: float = 0.00015 # Set learning rate 
+    momentum: float = .06 # Set the momentum
     beta2: float = 0 # Set the second momentum - use SGD if set to 0
     rs_min: float = 0.00
     rs_max: float = -5.00
     
     do_polar: bool = True # use a retinotopic mapping
+    do_raw: bool = False
     do_resize: bool = True # resize the image to args.image_size
     do_mask: bool = True # add a circular mask on the cartesian input to match the retino input (circular window) 
     do_scratch: bool = False # whether we use pretrained weights or not during transfer learning
     do_rotation: bool = False # just use this for rotation attacks
     do_rot_train: bool = False # just use this for training with rotation 
-    resolution: tuple = (11,11) # resolution of the likelihood map
-    size_ratio: float = 0.3 # how much of the image to use relative to radius
+    resolution: tuple = (11, 11) # resolution of the likelihood map
+    size_ratio: float = 0.1 # how much of the image to use relative to radius
     do_saccade: bool = False # True to get multiple pov for eah image in the data set transform
     do_zoom: bool = False # True to apply a zoom (range from args.size_ratio to (2 + args.size_ratio) +/- 0.1 )
-    method: str = 'full' #select sampling for mapping between full = with border & valid = no border
+    method: str = 'valid' #select sampling for mapping between full = with border & valid = no border
+    saccade_type: str = 'multi' #select sampling for mapping between multi = with multiple ratio & grid = same sample ratio 
     angles = np.linspace(-180, 180, 100, dtype=int)   # combination of angles used for training or attacks
+    normalize: bool = True
     
     
     
@@ -217,7 +230,7 @@ class Params:
 args = Params()
 
 # keep a human readable copy of the parameters
-json_fname = os.path.join(data_cache, datetag + '_config_args.json')
+json_fname = os.path.join(data_cache, strftime("%Y-%m-%d", gmtime()) + '_config_args.json')
 with open(json_fname, 'wt') as f:
     json.dump(vars(args), f, indent=4)
 #############################################################
@@ -275,7 +288,7 @@ im_mean = np.array([0.485, 0.456, 0.406])
 im_std = np.array([0.229, 0.224, 0.225]) 
 
 def imgs_to_np(img_list, im_mean=im_mean, im_std=im_std):
-    images = torchvision.utils.make_grid(img_list)
+    images = torchvision.utils.make_grid(img_list, nrow=11)
     """Imshow for Tensor."""
     inp = images.numpy().transpose((1, 2, 0))
     inp = im_std * inp + im_mean
@@ -283,7 +296,7 @@ def imgs_to_np(img_list, im_mean=im_mean, im_std=im_std):
     return(inp)
 
 def imshow(img_list, im_mean=im_mean, im_std=im_std, 
-           title=None, fig_height=5, fig=None, ax=None): #allow to display the input image
+           title=None, fig_height=7, fig=None, ax=None, save=False, name=None): #allow to display the input image
     if ax is None:
         fig, ax = plt.subplots(figsize=(fig_height*len(img_list), fig_height))
     inp = imgs_to_np(img_list, im_mean=im_mean, im_std=im_std)
@@ -292,7 +305,11 @@ def imshow(img_list, im_mean=im_mean, im_std=im_std,
     ax.set_yticks([])
     if title != None: fig.suptitle(title)
     fig.set_facecolor(color='white')
-    plt.tight_layout()
+    #plt.tight_layout()
+
+    if save:
+        for ext in ['pdf', 'png']:
+            fig.savefig(f'figs/{name}.{ext}',  **opts_savefig)
     
 def to_dev(args, item):
     if hasattr(args, 'device'):
@@ -371,6 +388,8 @@ def multi_sacade_map(args):
     all_ratios = np.linspace(1, args.size_ratio, round_up(args.resolution[0],2))
     grids_saccades = []
     for num, i in enumerate(np.linspace(1, args.resolution[0], round_up(args.resolution[0],2), dtype=int)):
+        #if args.saccade_type == 'multi':
+        #    args.method = 'full' if len(grids_saccades) == len(all_ratios)-1 else 'valid'
         args.resolution = (i,i)
         args.size_ratio = all_ratios[num]
         grids_saccades.append(get_saccade_map(args).reshape(args.resolution[0], args.resolution[1],
@@ -481,15 +500,14 @@ def get_transforms(args, im_mean=im_mean, im_std=im_std):
 
     if args.do_saccade :
         args.batch_size_val = 1
-        grid = to_dev(args, multi_sacade_map(args))
-        #grid = to_dev(args, get_saccade_map(args))
+        grid = to_dev(args, multi_sacade_map(args)) if args.saccade_type == 'multi' else to_dev(args, get_saccade_map(args)) 
         transforms.append(to_log_polar_tens(grid, 'multiple'))
 
-        if not args.do_polar:
+        if not args.do_polar and not args.do_raw:
             mask = to_dev(args, make_mask(args.image_size))
             transforms.append(ApplyMask(mask))
-
-    transforms.append(T.Normalize(mean=im_mean, std=im_std)) # to normalize colors on the imagenet dataset
+    if args.normalize:
+        transforms.append(T.Normalize(mean=im_mean, std=im_std)) # to normalize colors on the imagenet dataset
     
     return T.Compose(transforms)
 
@@ -601,7 +619,6 @@ def train_model(args, model, dataloaders, each_steps=64, verbose=True):
     for i_epoch in range(args.num_epochs):
         i_image = 0
         for i_step, (images, labels) in enumerate(dataloaders['train']):
-            imshow(images[0:10])
             images, labels = images.to(device), labels.to(device)
             total_image += len(images)
             i_image += len(images)
@@ -680,7 +697,8 @@ def get_positions(args, image):
 
     min_size = np.min((H, W))
     box_size = int(min_size*args.size_ratio)
-    if args.method=='valid':
+    #if args.method=='valid':
+    if False:
         if H < W:
             shift = (0, (W-H)/2)
         else:
@@ -698,7 +716,7 @@ def get_positions(args, image):
 
 def compute_likelihood_map(args, model, image, resolution=(11, 11), # how many fixation points to use
                            size_ratio=args.size_ratio, # how much of the image to use relative to radius
-                           N_batch=100):
+                           N_batch=125):
 
     pos_H, pos_W, box_size = get_positions(args, image)
     args.device = device
@@ -707,7 +725,7 @@ def compute_likelihood_map(args, model, image, resolution=(11, 11), # how many f
     # model = model.to(device)
 
     N_fixations = resolution[0] * resolution[1]
-    proba_label = np.zeros((N_fixations, 1000))
+    proba_label = torch.zeros((N_fixations, 1000))
     for idx_start in np.arange(0, N_fixations, N_batch):
         idx_stop = np.min((idx_start+N_batch, N_fixations))
             
@@ -718,39 +736,47 @@ def compute_likelihood_map(args, model, image, resolution=(11, 11), # how many f
                                                     pos_W.ravel()[idx_start:idx_stop])):
                 h, w = int(h), int(w)
                 cropped_image = crop(image, h-box_size//2, w-box_size//2, box_size, box_size)
-                cropped_images[i_fixation, ...] = data_transform(cropped_image)
                 
+                cropped_images[i_fixation, ...] = data_transform(cropped_image)
+            print(cropped_images.shape)
+            cropped_images = T.Resize((224, 224), interpolation=interpolation, antialias=True)(cropped_images)
+            print(cropped_images.shape)
             outputs = torch.nn.functional.softmax(model(cropped_images), dim=1)
         
-        proba_label[idx_start:idx_stop, :] = outputs.detach().cpu().numpy()
+        proba_label[idx_start:idx_stop, :] = outputs#.detach().cpu().numpy()
     if torch.cuda.is_available(): torch.cuda.empty_cache()
         
-    return pos_H, pos_W, proba_label
+    return proba_label
+    #return pos_H, pos_W, proba_label
 
 def clean_resize(args, image):
     image = T.Resize(args.image_size, interpolation=interpolation, antialias=True)(image)
-    return T.CenterCrop(int(args.image_size), int(args.image_size))(image)
+    return T.CenterCrop((int(args.image_size), int(args.image_size)))(image)
+           
 
 def get_batch(args, model, full_image, size=100):
     N_fixations = args.resolution[0] * args.resolution[1]
-    proba_label = np.zeros((N_fixations, 1000))
+    proba_label = torch.zeros((N_fixations, 1000))
     for idx_start in np.arange(0, N_fixations, size):
         idx_stop = np.min((idx_start+size, N_fixations))
         with torch.no_grad():
             outputs = torch.nn.functional.softmax(model(full_image[idx_start:idx_stop]), dim=1)
-        proba_label[idx_start:idx_stop, :] = outputs.detach().cpu().numpy()
+        proba_label[idx_start:idx_stop, :] = outputs#.detach().cpu().numpy()
     return proba_label
 
-def rolling_map(args, image, log_grid, set_resolution=args.resolution, subsample_size=None):
+def rolling_map(args, image, retino_grid, set_resolution=args.resolution, subsample_size=None):
     if subsample_size is None:
+        #subsample_size = args.image_size
         subsample_size = min(image.shape[1], image.shape[2]) * args.size_ratio
     preds_im = []
     for i in np.linspace(0, (image.shape[1]-subsample_size), set_resolution[0], dtype=int):
         for j in np.linspace(0, (image.shape[2]-subsample_size), set_resolution[1], dtype=int):
-            if args.polar:
-                preds_im.append(apply_grid(image[:,i:(subsample_size+i),j:(subsample_size+j)].unsqueeze(0), log_grid))
+            if args.do_polar:
+                preds_im.append(apply_grid(image[:,i:(subsample_size+i),j:(subsample_size+j)].unsqueeze(0), retino_grid))
             else:
-                preds_im.append(clean_resize(args, image[:,i:(subsample_size+i),j:(subsample_size+j)]))
+                #preds_im.append(clean_resize(args, image[:,i:(subsample_size+i),j:(subsample_size+j)]))
+                preds_im.append(T.Resize((int(args.image_size), int(args.image_size)),
+                    interpolation=interpolation, antialias=True)(image[:,i:(subsample_size+i),j:(subsample_size+j)]))
     return torch.stack(preds_im).reshape(set_resolution[0],set_resolution[1], 3, args.image_size, args.image_size).squeeze(0)
 
 def rolling_map_LP(args, origin_size, image, retino_grid):
@@ -764,55 +790,19 @@ def rolling_map_LP(args, origin_size, image, retino_grid):
     if args.do_polar:
         grids_images[0] = apply_grid(image.unsqueeze(0), retino_grid)
     else:
-        grids_images[0] = clean_resize(args, image)
+        #grids_images[0] = clean_resize(args, image)
+        grids_images[0] = T.Resize((int(args.image_size), int(args.image_size)), interpolation=interpolation, antialias=True)(image)
     for i in np.linspace(0, len(grids_images)-2, len(grids_images)-1, dtype=int):
         grids_images[i+1][1:-1,1:-1] = grids_images[i]
-    
+        
+    grids_images = grids_images[i+1][:, :, ::].reshape(args.resolution[0] * args.resolution[1], 3,
+                                                                args.image_size, args.image_size)
     if args.do_polar:
-        return grids_images[i+1][:, :, ::]
+        return grids_images
     else:
-        return grids_images[i+1][:, :, ::] * make_mask(args.image_size)
+        return grids_images * to_dev(args, make_mask(args.image_size))
 
 #############################################################
-
-def enlarge_function(array, new_resolution):
-    # Get the dimensions of the input array
-    rows, cols = array.shape
-
-    # Calculate the step size for each dimension
-    step_x = cols / new_resolution[1]
-    step_y = rows / new_resolution[0]
-
-    # Initialize the output array with zeros
-    enlarged_array = np.zeros(new_resolution)
-
-    # Iterate over the new resolution and perform bilinear interpolation
-    for i in range(new_resolution[0]):
-        for j in range(new_resolution[1]):
-            # Calculate the coordinates in the original array
-            x = j * step_x
-            y = i * step_y
-
-            # Find the four surrounding points
-            x0 = int(x)
-            x1 = min(x0 + 1, cols - 1)
-            y0 = int(y)
-            y1 = min(y0 + 1, rows - 1)
-
-            # Calculate the weights for bilinear interpolation
-            dx = x - x0
-            dy = y - y0
-
-            # Perform bilinear interpolation
-            interpolated_value = (1 - dx) * (1 - dy) * array[y0, x0] + \
-                                 dx * (1 - dy) * array[y0, x1] + \
-                                 (1 - dx) * dy * array[y1, x0] + \
-                                 dx * dy * array[y1, x1]
-
-            # Assign the interpolated value to the corresponding location in the enlarged array
-            enlarged_array[i, j] = interpolated_value
-
-    return enlarged_array
 
 def to_tuple(str_size):
     return (int(str_size.split(' ')[0].split('(')[1].split(',')[0]),
@@ -833,7 +823,7 @@ def get_mask_from_bb(target_size, orig_size, boxes):
     mask = np.zeros((orig_size),dtype=np.uint8) # initialize mask
     for box in boxes : 
         mask[box['ymin']:box['ymax'],box['xmin']:box['xmax']] = 1 # fill with white pixels
-    return enlarge_function(mask, target_size).T
+    return cv2.resize(mask, (target_size[1], target_size[0]), interpolation=cv2.INTER_LINEAR).T
 
 def store_pandas(df, df_):
     if df is None:
@@ -842,12 +832,21 @@ def store_pandas(df, df_):
         return(pd.concat([df, df_], ignore_index=True))
 
 def normalize_array(arr):
-    # Convert the array to float type (if not already)
-    arr = arr.astype(float)
+    # Ensure input is a NumPy array and check if it's non-empty
+    if arr.size == 0:
+        return arr  # Return the empty array as is
+    
+    # Convert the array to float type if it's not already
+    if not np.issubdtype(arr.dtype, np.floating):
+        arr = arr.astype(float)
     
     # Calculate the minimum and maximum values in the array
     min_val = np.min(arr)
     max_val = np.max(arr)
+    
+    # Avoid division by zero if all values in the array are the same
+    if max_val == min_val:
+        return np.zeros_like(arr)
     
     # Normalize the array between 0 and 1
     normalized_arr = (arr - min_val) / (max_val - min_val)
@@ -866,7 +865,6 @@ def no_axis_title(ax, title):
     ax.set_yticks([])
     ax.set_title(f'{title}')
     return 
-
 
 def get_three_points(ground_true_indices, resolution):
 
@@ -898,6 +896,47 @@ def get_three_points(ground_true_indices, resolution):
 
     return [(Y_mid , X_mid), (Y_bord , X_bord), end]
 
+def get_points_between(p1, p2):
+    points = []
+    x1, y1 = p1
+    x2, y2 = p2
+    
+    dx = abs(x2 - x1)
+    dy = abs(y2 - y1)
+    
+    sx = 1 if x2 > x1 else -1
+    sy = 1 if y2 > y1 else -1
+    
+    err = dx - dy
+    
+    x, y = x1, y1
+    first_step = True
+    
+    while (x, y) != (x2, y2):
+        if not first_step:  # Skip adding the starting point
+            points.append((x, y))
+        
+        e2 = 2 * err
+        if e2 > -dy:
+            err -= dy
+            x += sx
+        if e2 < dx:
+            err += dx
+            y += sy
+        
+        first_step = False
+    
+    # Ensure at least one point is returned and is not equal to the start or end point
+
+    if len(points) == 0 :
+        mid_x = (x1 + x2) // 2
+        mid_y = round_up((y1 + y2), 2)
+        points = [(mid_x, mid_y)]
+    
+    return points
+
+
+
 def get_like_point(heatmap, resolution, three_points):
     mid_point = heatmap[(three_points[0][0]*resolution[0]) + three_points[0][1]]
     in_point = heatmap[(three_points[1][0]*resolution[0]) + three_points[1][1]]
@@ -911,17 +950,16 @@ def get_ground_true(args, image_name, annotations, mode):
         box_anot = annotations[annotations['ImageId'] == image_name]['PredictionString'].item().split(' ')
         boxes = get_boxes_imagenet(box_anot)
         origin_size = to_tuple(annotations[annotations['ImageId'] == image_name]['origin_size'].item())
-        ground_true = get_mask_from_bb(args.resolution, origin_size, boxes)
+        ground_true = np.round(get_mask_from_bb(args.resolution, origin_size, boxes))
     
     else: #Get ground true for Animal 10k
         boxes = annotations[image_name]['keypoints']
         origin_size = [annotations[image_name]['image_info']['height'], annotations[image_name]['image_info']['width']]
         brut_array = to_heatmap(boxes, origin_size)
         normalized_array = normalize_array(brut_array)
-        ground_true = enlarge_function(normalized_array.reshape(origin_size), resolution) > 0.2
-        
-        
-    
+        normalized_array[normalized_array < 0.25] = 0
+        ground_true = cv2.resize(normalized_array.reshape(origin_size), (args.resolution[1], args.resolution[0]), 
+                                 interpolation=cv2.INTER_LINEAR) 
     
     if len(np.where(ground_true > 0)[0]) == 0 :
         try:
@@ -929,13 +967,13 @@ def get_ground_true(args, image_name, annotations, mode):
                 coord = (little_box(boxe, origin_size, args.resolution))
                 ground_true[coord[1],coord[0]] = 1
         except:
-                return None, None, np.ones(1) # return None for value we cant caculate and 1 to stop at the next condition
+                return None, None, np.ones(1), origin_size # return None for value we cant caculate and 1 to stop at the next condition
             
     ground_true_indices = np.where(ground_true.reshape(args.resolution[0]*args.resolution[1]) > 0)
     
     three_points = get_three_points(ground_true_indices, args.resolution)
     
-    return ground_true_indices, three_points, ground_true
+    return ground_true_indices, three_points, ground_true, origin_size
 
 def th_delete(tensor, indices):
     mask = torch.ones(tensor.numel(), dtype=torch.bool)
@@ -944,30 +982,56 @@ def th_delete(tensor, indices):
 
 def get_IoU(heatmap, ground_true):
     IoU = []
-    heatmap = heatmap.numpy()
-    for tresh in np.linspace(0,1,10):
-        n_heat = len(np.where(heatmap > tresh )[0])
-        n_true = len(np.where(ground_true > 0 )[0])
-        n_heat_in = len(np.where(heatmap[(heatmap > tresh) & (ground_true > 0 )])[0])
-        IoU.append(n_heat_in/(n_true+ n_heat))
+    # Convert to numpy if using PyTorch tensors
+    heatmap = heatmap.numpy() if isinstance(heatmap, torch.Tensor) else heatmap
+    ground_true = ground_true.numpy() if isinstance(ground_true, torch.Tensor) else ground_true
+    
+    # Ensure ground_true is a binary mask (0s and 1s)
+    ground_true = ground_true.astype(bool)
+
+    for thresh in np.linspace(0, 1, 36):
+        # Convert heatmap to a binary mask based on the threshold
+        bin_heatmap = heatmap > thresh
+        
+        # Convert to boolean arrays for bitwise operations
+        bin_heatmap = bin_heatmap.astype(bool)
+        
+        # Intersection: pixels where both heatmap and ground truth are positive
+        intersection = np.sum(bin_heatmap & ground_true)
+        
+        # Union: pixels where either heatmap or ground truth are positive
+        union = np.sum(bin_heatmap | ground_true)
+        
+        # Avoid division by zero
+        if union == 0:
+            IoU.append(0.0)
+        else:
+            IoU.append(intersection / union)
+
+    
+    
     return IoU
 
-from sklearn.metrics import accuracy_score, precision_score, f1_score
-
 def read_IoU(results_Iou):
+    none_iou = 0
     mean_Iou = {}
-    for tresh in np.linspace(0,9,10, dtype=int):
+    for tresh, i in enumerate(results_Iou[0]):
         mean_Iou[tresh] = 0
         
-    for im_ in results_Iou:
-        for tresh, Iou in enumerate(im_) :
-            mean_Iou[tresh] += float(Iou)
+    for image_iou in results_Iou:
+        if image_iou is not None:
+            for tresh, Iou in enumerate(image_iou) :
+                mean_Iou[tresh] += float(Iou)
+        else:
+            none_iou += 1
     
     list_Iou = []
-    for tresh in np.linspace(0,9,10, dtype=int):
-        mean_Iou[tresh] /= len(results_Iou)
+    for tresh in mean_Iou:
+        mean_Iou[tresh] /= (len(results_Iou) - none_iou)
         list_Iou.append(mean_Iou[tresh])
     return mean_Iou, list_Iou
+
+from sklearn.metrics import accuracy_score, precision_score, f1_score
     
 def get_best_Iou(result_Iou, best_loc):
     best_Iou = []
@@ -982,7 +1046,10 @@ def get_dist(results_dist):
         for pos, dist_ in enumerate(dist.split(' ')) :
             distances[pos].append((float(dist_.replace(',', '').replace('[', '').replace(']', ''))))
     return [np.zeros(len(distances[0])), np.array(distances[0]), np.array(distances[1])]
-    
+
+def to_save(fig, name):
+    for ext in ['pdf', 'png']:
+        fig.savefig(f'figs/{name}.{ext}',  **opts_savefig)
 
 def get_top_indices(tensor, k=5):
 
@@ -1025,3 +1092,33 @@ def to_heatmap(key_points, shape):  # a function use to apply 2d gaussian at des
         x0, y0 = i
         Gauss += twoD_Gaussian(x, y, x0, y0, .2*x.max(), .2*y.max())
     return Gauss
+
+import seaborn as sns
+def display_heat(image, likelihood_map, resolution, model_name, ax):
+    shape_im = image.shape[:2]
+    likelihood_map = np.array(likelihood_map).reshape(resolution)
+    likelihood_map = cv2.resize(np.array(likelihood_map), (shape_im[1],shape_im[0]), interpolation=cv2.INTER_LINEAR)
+    image_lin_display = cv2.resize(image, likelihood_map.T.shape, interpolation= cv2.INTER_LINEAR)
+    sns.heatmap(likelihood_map, linewidth = 0 , annot = False, cmap='coolwarm', vmin=0, vmax=1, cbar = False, alpha=.5, ax=ax)
+    ax.imshow(image_lin_display)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    plt.tight_layout()
+
+def display_heat_two(image, likelihood_maps, match, resolution, title_doc, save=False):
+    fig, axs = plt.subplots(1, len(likelihood_maps), figsize=(10, 10))
+    for likelihood_map, ax in zip(likelihood_maps, axs):
+        shape_im = image.shape[:2]
+        likelihood_map = likelihood_map[:,match] if type(match) is int else likelihood_map[:,match].sum(axis=1)
+        likelihood_map = np.array(likelihood_map).reshape(resolution)
+        likelihood_map = cv2.resize(np.array(likelihood_map), (shape_im[1],shape_im[0]), interpolation=cv2.INTER_LINEAR)
+        image_lin_display = cv2.resize(image, likelihood_map.T.shape, interpolation= cv2.INTER_LINEAR)
+        sns.heatmap(likelihood_map, linewidth = 0 , annot = False, cmap='coolwarm', vmin=0, vmax=1, cbar = False, alpha=.5, ax=ax)
+        ax.imshow(image_lin_display)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        plt.tight_layout()
+
+    if save :
+        for ext in ['pdf', 'png']:
+            fig.savefig(f'figs/{title_doc}.{ext}',  **opts_savefig)
