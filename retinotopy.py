@@ -3,7 +3,8 @@
 data_set_types = ['raw', 'full', 'bbox']
 data_set_linestyles = [':', '-.', '-', ]
 import os
-HOST = os.uname()[1]
+import platform
+HOST = platform.uname()[1]
 # print(f'{HOST=}')
 def touch(fname): open(fname, 'w').close()
 # import requests
@@ -182,7 +183,6 @@ from dataclasses import dataclass, asdict, field
 
 @dataclass
 class Params:
-    import platform
     print('Welcome on', platform.platform())
 
     datetag: str = datetag # Set the date of the result's file
