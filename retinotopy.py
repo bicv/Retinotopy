@@ -3,7 +3,9 @@
 data_set_types = ['raw', 'full', 'bbox']
 data_set_linestyles = [':', '-.', '-', ]
 import os
-HOST = os.uname()[1]
+import platform
+HOST = platform.uname()[1]
+
 # print(f'{HOST=}')
 def touch(fname): open(fname, 'w').close()
 # import requests
@@ -34,10 +36,8 @@ plt.rc('ytick', labelsize=18)    # fontsize of the tick labels
 # matplotlib parameters
 from matplotlib import font_manager
 # Fig variables
-try: # before https://matplotlib.org/stable/api/prev_api_changes/api_changes_3.9.0.html#removals
-    cmap = plt.cm.get_cmap('viridis')
-except: # https://matplotlib.org/stable/api/prev_api_changes/api_changes_3.9.0.html#removals
-    cmap = matplotlib.colormaps['viridis']
+cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["darkblue",  "lightsteelblue", "lavender", "white", "seashell", "mistyrose",  "firebrick"])
+
 fig_width = 15
 fontsize = 14
 font = font_manager.FontProperties(weight='normal', size=fontsize)
@@ -61,6 +61,7 @@ def transparent_cmap(cmap, N=255):
     mycmap._init()
     mycmap._lut[:, -1] = np.linspace(0, 1, N+4, endpoint=True)
     return mycmap
+
 
 
 # HACK to rename files
@@ -157,16 +158,16 @@ elif 'Ahsoka' in HOST:
     device = torch.device('cpu')
     
 elif 'DESKTOP-27VNO0E' in HOST: 
-    DATAROOT = '/mnt/d/Data'
+    DATAROOT = 'd:\\Data'
     batch_size = 50
     num_workers = 8
 
-elif 'Edison' in HOST: 
+elif 'Newton' in HOST: 
     
     if os.path.isdir('/media/jnjer/Transcend/Data'):
         DATAROOT = '/media/jnjer/Transcend/Data'
     else:
-        DATAROOT = '/home/jnjer/PhD/JNJER_PhD/data'
+        DATAROOT = 'c:\\Users\\JnJer\\Nextcloud\\JNJER_PhD\\data'
     batch_size = 50
     num_workers = 4
     
@@ -182,7 +183,7 @@ from dataclasses import dataclass, asdict, field
 
 @dataclass
 class Params:
-    import platform
+    
     print('Welcome on', platform.platform())
 
     datetag: str = datetag # Set the date of the result's file
@@ -209,6 +210,7 @@ class Params:
     
     do_polar: bool = True # use a retinotopic mapping
     do_raw: bool = False
+    do_translate: bool = False
     do_resize: bool = True # resize the image to args.image_size
     do_mask: bool = True # add a circular mask on the cartesian input to match the retino input (circular window) 
     do_scratch: bool = False # whether we use pretrained weights or not during transfer learning
@@ -350,6 +352,61 @@ def get_zoom_grid(args):
         
     return torch.stack(grids)
 
+def generate_translate_roll_grids(args):
+    """
+    Generate grids for `nnf.grid_sample` where each fixation point rolls the image
+    without losing information, mimicking `np.roll` behavior.
+    
+    Args:
+        image_shape (tuple): Shape of the original image as (C, H, W).
+        n_fixation_points (int): Number of fixation points along each axis.
+
+    Returns:
+        torch.Tensor: A tensor of shape [n_fixation_points^2, C, W, H],
+                      with each fixation point shifted and wrapped around.
+    """
+    
+    if args.do_polar:
+        # Generate base log-polar grid
+        start = get_start(1)
+        rs_ = torch.logspace(start, args.rs_max, args.image_size, base=2)  # Radial distances (log scale)
+        ts_ = torch.linspace(0, torch.pi * 2, args.image_size + 1)[:-1]  # Angular positions (full circle)
+
+        grid_x = torch.outer(rs_, torch.cos(ts_))
+        grid_y = torch.outer(rs_, torch.sin(ts_))
+        base_grid = torch.stack((grid_x, grid_y), dim=2)  # (H_scaled, W_scaled, 2)
+        # Normalize the log-polar grid to range [-1, 1]
+        base_grid[..., 0] = 2 * (base_grid[..., 0] - base_grid[..., 0].min()) / (base_grid[..., 0].max() - base_grid[..., 0].min()) - 1
+        base_grid[..., 1] = 2 * (base_grid[..., 1] - base_grid[..., 1].min()) / (base_grid[..., 1].max() - base_grid[..., 1].min()) - 1
+    else:
+        grid_y = torch.linspace(-1, 1, args.image_size)
+        grid_x = torch.linspace(-1, 1, args.image_size)
+        base_grid = torch.stack(torch.meshgrid(grid_y, grid_x, indexing='ij'), dim=-1)  # (H, W, 2)
+
+        
+        base_grid[..., 0] = -base_grid[..., 0]
+        base_grid = base_grid[..., [1, 0]]  # Swap x and y axes
+        base_grid[..., 1] = -base_grid[..., 1]  # Invert the new y-axis (originally x-axis)
+
+    # Create linear fixation points
+    fixation_points_x = torch.linspace(1, -1, args.resolution[0])
+    fixation_points_y = torch.linspace(1, -1, args.resolution[1])
+    fixation_grid = torch.stack(torch.meshgrid(fixation_points_x, fixation_points_y, indexing='ij'), dim=-1)
+
+    roll_grid = []
+    for point in fixation_grid.view(-1, 2):
+        shifted_grid = base_grid.clone()
+        shifted_grid[..., 0] -= point[1]  # Shift x-axis (horizontal)
+        shifted_grid[..., 1] -= point[0]  # Shift y-axis (vertical)
+
+        # Wrap around grid values to simulate rolling
+        shifted_grid[..., 0] = torch.remainder(shifted_grid[..., 0] + 1, 2) - 1
+        shifted_grid[..., 1] = torch.remainder(shifted_grid[..., 1] + 1, 2) - 1
+
+        roll_grid.append(shifted_grid)
+
+    return torch.stack(roll_grid, dim=0)
+
 
 def get_start(start_value):
     return torch.log2(torch.tensor(start_value)).item()
@@ -406,7 +463,7 @@ def apply_grid(image, grid):
     return nnf.grid_sample(image, grid, 
                             padding_mode="border", align_corners=False).squeeze(dim=0)
 
-class to_log_polar_tens(object): 
+class transform_apply_grid(object): 
     def __init__(self, logPolar_grid, mode):
         self.grid = logPolar_grid
         self.mode = mode
@@ -460,9 +517,6 @@ def CleanRotations_function(image, mask, angles=[0]):
 # Resnet datasets initialisation
 def get_transforms(args, im_mean=im_mean, im_std=im_std):
     
-    grid = get_grid(args)
-    grid_zoom = get_zoom_grid(args)
-    
     transforms = [                
         T.ToImage(),  # Convert to tensor, only needed if you had a PIL image
         T.ToDtype(torch.float32, scale=True),  # Normalize expects float input
@@ -473,21 +527,27 @@ def get_transforms(args, im_mean=im_mean, im_std=im_std):
 
     if args.do_rotation and not args.do_saccade:
         args.batch_size_val, args.batch_size = 1, 1
-        grid = grid.repeat(len(args.angles), 1, 1, 1)
+        grid = get_grid(args).repeat(len(args.angles), 1, 1, 1)
         transforms.append(CleanRotations_class(args.angles))
 
-    if args.do_zoom and not args.do_saccade:
+    if args.do_zoom and not (args.do_saccade or args.do_translate):
         args.batch_size_val, args.batch_size = 1, 1
-        grid_zoom = to_dev(args, grid_zoom)
-        transforms.append(to_log_polar_tens(grid_zoom, 'multiple'))
+        grid_zoom = to_dev(args, get_zoom_grid(args))
+        transforms.append(transform_apply_grid(grid_zoom, 'multiple'))
         
         if not args.do_polar:
             mask = to_dev(args, make_mask(args.image_size))
             transforms.append(ApplyMask(mask))
 
-    if args.do_polar and not (args.do_saccade or args.do_zoom): 
+    if args.do_translate and not (args.do_saccade or args.do_zoom):
+        args.batch_size_val, args.batch_size = 1, 1
+        grid_translate = to_dev(args, generate_translate_roll_grids(args))
+        transforms.append(transform_apply_grid(grid_translate, 'multiple'))
+     
+
+    if args.do_polar and not (args.do_saccade or args.do_zoom or args.do_translate): 
         
-        transforms.append(to_log_polar_tens(grid, ('base' if not args.do_rotation else None)))
+        transforms.append(transform_apply_grid(get_grid(args), ('base' if not args.do_rotation else None)))
 
     if args.do_resize and not (args.do_polar or args.do_saccade or args.do_zoom):
         transforms.append(T.Resize(int(args.image_size), interpolation=interpolation, antialias=True))
@@ -501,7 +561,7 @@ def get_transforms(args, im_mean=im_mean, im_std=im_std):
     if args.do_saccade :
         args.batch_size_val = 1
         grid = to_dev(args, multi_sacade_map(args)) if args.saccade_type == 'multi' else to_dev(args, get_saccade_map(args)) 
-        transforms.append(to_log_polar_tens(grid, 'multiple'))
+        transforms.append(transform_apply_grid(grid, 'multiple'))
 
         if not args.do_polar and not args.do_raw:
             mask = to_dev(args, make_mask(args.image_size))
@@ -540,11 +600,8 @@ def datasets_transforms(args, im_mean=im_mean, im_std=im_std,
     return dataloaders
 
 
-def image_datasets_transforms(args, im_mean=im_mean, im_std=im_std,
-                        num_workers=num_workers, pin_memory=True, shuffle=True, verbose=True):
+def image_datasets_transforms(args, im_mean=im_mean, im_std=im_std, verbose=True):
 
-    dataloaders = {}
-    
     for folder in args.folders:
 
         args.do_rot_train = False if folder != 'train' else args.do_rot_train
@@ -869,8 +926,8 @@ def no_axis_title(ax, title):
 def get_three_points(ground_true_indices, resolution):
 
     
-    X_mid = math.ceil(np.mean(ground_true_indices[0]%resolution[0]))
-    Y_mid = math.ceil(np.mean(ground_true_indices[0]//resolution[0]))
+    X_mid = math.ceil(np.mean(ground_true_indices[0]%min(args.resolution)))
+    Y_mid = math.ceil(np.mean(ground_true_indices[0]//min(args.resolution)))
     
     if X_mid < ((len(resolution)//2)+1) : 
         X_bord = max(ground_true_indices[0]%resolution[0])
@@ -894,7 +951,7 @@ def get_three_points(ground_true_indices, resolution):
         else:
             end = (0,0)
 
-    return [(Y_mid , X_mid), (Y_bord , X_bord), end]
+    return [(X_mid , Y_mid), (X_bord , Y_bord), end]
 
 def get_points_between(p1, p2):
     points = []
@@ -1093,13 +1150,28 @@ def to_heatmap(key_points, shape):  # a function use to apply 2d gaussian at des
         Gauss += twoD_Gaussian(x, y, x0, y0, .2*x.max(), .2*y.max())
     return Gauss
 
+
+def collect_centered_map(args, map, position_prior):
+    diff_x, diff_y =  (args.resolution[0]//2)-position_prior[0] , (args.resolution[1]//2)-position_prior[1]
+    map = torch.roll(map, [diff_x, diff_y], dims=[0, 1])
+    #print(map)
+    if diff_x < 0 :
+        map[diff_x:, :] = torch.nan
+    elif diff_x > 0:
+        map[:diff_x, :] = torch.nan
+    if diff_y < 0 :
+        map[:, diff_y:] = torch.nan
+    elif diff_y > 0:
+        map[:, :diff_y] = torch.nan
+    return(map)
+
 import seaborn as sns
 def display_heat(image, likelihood_map, resolution, model_name, ax):
     shape_im = image.shape[:2]
     likelihood_map = np.array(likelihood_map).reshape(resolution)
-    likelihood_map = cv2.resize(np.array(likelihood_map), (shape_im[1],shape_im[0]), interpolation=cv2.INTER_LINEAR)
+    likelihood_map = cv2.resize(np.array(likelihood_map), (shape_im[1],shape_im[0]), interpolation=cv2.INTER_NEAREST)
     image_lin_display = cv2.resize(image, likelihood_map.T.shape, interpolation= cv2.INTER_LINEAR)
-    sns.heatmap(likelihood_map, linewidth = 0 , annot = False, cmap='coolwarm', vmin=0, vmax=1, cbar = False, alpha=.5, ax=ax)
+    sns.heatmap(likelihood_map, linewidth = 0 , annot = False, cmap=cmap, vmin=0, vmax=1, cbar = False, alpha=.5, ax=ax)
     ax.imshow(image_lin_display)
     ax.set_xticks([])
     ax.set_yticks([])
@@ -1111,9 +1183,9 @@ def display_heat_two(image, likelihood_maps, match, resolution, title_doc, save=
         shape_im = image.shape[:2]
         likelihood_map = likelihood_map[:,match] if type(match) is int else likelihood_map[:,match].sum(axis=1)
         likelihood_map = np.array(likelihood_map).reshape(resolution)
-        likelihood_map = cv2.resize(np.array(likelihood_map), (shape_im[1],shape_im[0]), interpolation=cv2.INTER_LINEAR)
+        likelihood_map = cv2.resize(np.array(likelihood_map), (shape_im[1],shape_im[0]), interpolation=cv2.INTER_NEAREST)
         image_lin_display = cv2.resize(image, likelihood_map.T.shape, interpolation= cv2.INTER_LINEAR)
-        sns.heatmap(likelihood_map, linewidth = 0 , annot = False, cmap='coolwarm', vmin=0, vmax=1, cbar = False, alpha=.5, ax=ax)
+        sns.heatmap(likelihood_map, linewidth = 0 , annot = False, cmap=cmap, vmin=0, vmax=1, cbar = False, alpha=.5, ax=ax)
         ax.imshow(image_lin_display)
         ax.set_xticks([])
         ax.set_yticks([])
