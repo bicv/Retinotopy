@@ -3,6 +3,7 @@
 # `pip install -U -r requirements.txt`
 pip
 matplotlib
+opencv-python
 numpy
 numexpr
 imageio
