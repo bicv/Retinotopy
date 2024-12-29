@@ -119,6 +119,8 @@ def set_seed(seed=None, seed_torch=True):
 
 #############################################################
 data_cache = 'cached_data'
+os.makedirs(data_cache, exist_ok=True)
+
 interpolation = T.InterpolationMode.BILINEAR
 batch_size = 75
 if '.cluster' in HOST: # mesocentre
@@ -147,8 +149,9 @@ elif HOST in ['brain-lid-004']: # GPU manu
     num_workers = 16
 elif 'obiwan' in HOST: 
     # DATAROOT = '/Volumes/UnaTera/2023_archives/2023_science/JNJER_PhD/data'
-    DATAROOT = '/Volumes/SSD1TO/ImageNet'
     DATAROOT = '/Volumes/data/2024_archives/2024_science/Deep_learning/data'
+    DATAROOT = '/Volumes/SSD1TO/ImageNet'
+    DATAROOT = '/Volumes/SSD1TO/Deep_learning/data'
     interpolation = T.InterpolationMode.NEAREST
     num_workers = 4
 elif 'Ahsoka' in HOST: 
