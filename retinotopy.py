@@ -154,6 +154,8 @@ elif 'obiwan' in HOST:
     DATAROOT = '/Volumes/data/2024_archives/2024_science/Deep_learning/data'
     DATAROOT = '/Volumes/SSD1TO/ImageNet'
     DATAROOT = '/Volumes/SSD1TO/Deep_learning/data'
+    DATAROOT = '/Volumes/SSD1TO/Deep_learning/ILSVRC2010_ImageNet'
+    DATAROOT = 'data'
     interpolation = T.InterpolationMode.NEAREST
     num_workers = 4
 elif 'Ahsoka' in HOST: 

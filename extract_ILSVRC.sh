@@ -8,6 +8,7 @@
 #  Adapted from:
 #  https://github.com/facebook/fb.resnet.torch/blob/master/INSTALL.md
 #  https://gist.github.com/BIGBALLON/8a71d225eff18d88e469e6ea9b39cef4
+#  https://raw.githubusercontent.com/pytorch/examples/refs/heads/main/imagenet/extract_ILSVRC.sh
 # 
 #  imagenet/train/
 #  ├── n01440764
@@ -23,14 +24,25 @@
 #  ├── ......
 #
 #
-# Make imagnet directory
+# Make data directory
 #
-mkdir imagenet
+mkdir -p data
+cd data
+
+# place files ILSVRC2012_img_train.tar  and  ILSVRC2012_img_val.tar there
+# or get them using wget
+# wget https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_train.tar --no-check-certificate
+# wget https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_val.tar --no-check-certificate
+
+
+# Make imagenet directory
+mkdir -p Imagenet_full
+cd Imagenet_full
 #
 # Extract the training data:
 #
 # Create train directory; move .tar file; change directory
-mkdir imagenet/train && mv ILSVRC2012_img_train.tar imagenet/train/ && cd imagenet/train
+mkdir -p train && mv ../ILSVRC2012_img_train.tar train/ && cd train
 # Extract training set; remove compressed file
 tar -xvf ILSVRC2012_img_train.tar && rm -f ILSVRC2012_img_train.tar
 #
@@ -52,12 +64,13 @@ find . -name "*.tar" | while read NAME ; do mkdir -p "${NAME%.tar}"; tar -xvf "$
 #  ├── ......
 #
 # Change back to original directory
-cd ../..
+cd ..
 #
 # Extract the validation data and move images to subfolders:
 #
 # Create validation directory; move .tar file; change directory; extract validation .tar; remove compressed file
-mkdir imagenet/val && mv ILSVRC2012_img_val.tar imagenet/val/ && cd imagenet/val && tar -xvf ILSVRC2012_img_val.tar && rm -f ILSVRC2012_img_val.tar
+mkdir -p val && mv ../ILSVRC2012_img_val.tar val/ && cd val && tar -xvf ILSVRC2012_img_val.tar && rm -f ILSVRC2012_img_val.tar
+
 # get script from soumith and run; this script creates all class directories and moves images into corresponding directories
 wget -qO- https://raw.githubusercontent.com/soumith/imagenetloader.torch/master/valprep.sh | bash
 #
@@ -75,6 +88,12 @@ wget -qO- https://raw.githubusercontent.com/soumith/imagenetloader.torch/master/
 #
 #  $ find train/ -name "*.JPEG" | wc -l
 #  1281167
+echo "Total files in train should be 1281167, got:"
+find train/ -name "*.JPEG" | wc -l
 #  $ find val/ -name "*.JPEG" | wc -l
 #  50000
+echo "Total files in val should be 50000, got:"
+find val/ -name "*.JPEG" | wc -l
 #
+
+cd ../..
