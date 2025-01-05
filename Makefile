@@ -1,10 +1,10 @@
-DIR=RetinoTopy
+DIR=Retinotopy
 #################@#################@#################@#################
 # 
 MESO_URL=lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science/
 MESO_URL=lperrinet@193.51.217.241:science
 
-MESO_OPTS=-av -u --exclude pytorch.sif   -e "ssh -p 8822 -i ~/.ssh/id-ring-ecdsa"
+MESO_OPTS=-av -u --info=progress2 --exclude pytorch.sif   -e "ssh -p 8822 -i ~/.ssh/id-ring-ecdsa"
 pull_meso:
 	rsync $(MESO_OPTS) $(MESO_URL)/$(DIR)/cached_data .
 
