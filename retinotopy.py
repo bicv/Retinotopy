@@ -527,8 +527,8 @@ def get_transforms(args, im_mean=im_mean, im_std=im_std):
         T.ToDtype(torch.float32, scale=True),  # Normalize expects float input
     ]   
 
-    if args.do_rot_train: # used for augmentation and testing rotations
-        transforms.append(T.RandomRotation(degrees=(min(args.angles), max(args.angles)), interpolation=interpolation, expand=False))
+    # if args.do_rot_train: # used for augmentation and testing rotations
+    #     transforms.append(T.RandomRotation(degrees=(min(args.angles), max(args.angles)), interpolation=interpolation, expand=False))
 
     if args.do_rotation and not args.do_saccade:
         args.batch_size_val, args.batch_size = 1, 1
