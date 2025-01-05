@@ -291,6 +291,7 @@ def get_annotation(type):
 
 
 #############################################################
+# https://github.com/laurentperrinet/2024-12-09-normalizing-images-in-convolutional-neural-networks
 im_mean = np.array([0.485, 0.456, 0.406])
 im_std = np.array([0.229, 0.224, 0.225]) 
 
