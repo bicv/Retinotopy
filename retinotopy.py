@@ -218,7 +218,7 @@ class Params:
     do_mask: bool = True # add a circular mask on the Cartesian input to match the retino input (circular window) 
     do_scratch: bool = False # whether we use pretrained weights or not during transfer learning
     do_rotation: bool = False # just use this for rotation attacks
-    do_rot_train: bool = False # just use this for training with rotation 
+    # todo remove as it is not used anymore do_rot_train: bool = False # just use this for training with rotation 
     resolution: tuple = (11, 11) # resolution of the likelihood map
     size_ratio: float = 0.1 # how much of the image to use relative to radius
     do_saccade: bool = False # True to get multiple pov for eah image in the data set transform
@@ -578,46 +578,42 @@ def datasets_transforms(args, im_mean=im_mean, im_std=im_std,
                         num_workers=num_workers, pin_memory=True, shuffle=True, verbose=True):
     """
     
+    quel rapport avec image_datasets_transforms ?
 
     
     TODO: obsolete = "if angle is not none, applies a random rotation"
     """
 
 
-    image_datasets 
+    image_datasets  = image_datasets_transforms(args, im_mean=im_mean, im_std=im_std, verbose=verbose)
+
     dataloaders = {}
-    
     for folder in args.folders:
 
-        #args.do_rot_train = False if folder != 'train' else args.do_rot_train
-        data_transform = get_transforms(args, im_mean=im_mean, im_std=im_std)
-
-        path = os.path.join(args.root, folder) # data path
-        image_datasets = torchvision.datasets.ImageFolder(path, transform=data_transform) # load the data
-
         dataloaders[folder] = torch.utils.data.DataLoader(
-                                image_datasets, 
+                                image_datasets[folder], 
                                 batch_size=args.batch_size if folder=='train' else args.batch_size_val,
                                 shuffle=shuffle, num_workers=num_workers, pin_memory=pin_memory
                         )
-        if verbose: 
-            print(f"Loaded {len(image_datasets)} images under {folder}")  
+        # if verbose: 
+        #     print(f"Loaded {len(image_datasets)} images under {folder}")  
 
     return dataloaders
 
 
 def image_datasets_transforms(args, im_mean=im_mean, im_std=im_std, verbose=True):
 
+    image_datasets  = {}
     for folder in args.folders:
 
-        args.do_rot_train = False if folder != 'train' else args.do_rot_train
+        # args.do_rot_train = False if folder != 'train' else args.do_rot_train
         data_transform = get_transforms(args, im_mean=im_mean, im_std=im_std)
 
         path = os.path.join(args.root, folder) # data path
-        image_datasets = torchvision.datasets.ImageFolder(path, transform=data_transform) # load the data
+        image_datasets[folder] = torchvision.datasets.ImageFolder(path, transform=data_transform) # load the data
 
         if verbose: 
-            print(f"Loaded {len(image_datasets)} images under {folder}")  
+            print(f"Loaded {len(image_datasets[folder])} images under {folder}")  
 
     return image_datasets # bug ? on renvoie que le dernier dataset de args.folder
 
