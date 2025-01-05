@@ -1,6 +1,7 @@
 #############################################################
 # data_set_type = 'focus' # Select your root between : 'boxes', 'square', 'focus', 'full', 'square'
-data_set_types = ['raw', 'full', 'bbox']
+# data_set_types = ['raw', 'full', 'bbox']
+data_set_types = ['full', 'bbox']
 data_set_linestyles = [':', '-.', '-', ]
 import os
 import platform
@@ -14,7 +15,8 @@ import time
 tic = time.time()
 from time import strftime, gmtime
 datetag = strftime("%Y-%m-%d", gmtime())
-datetag = '2024-05-24'
+# datetag = '2024-05-24'
+datetag = '2025-01-05'
 import cv2
 #############################################################
 
@@ -103,7 +105,7 @@ else:
     device = torch.device('cpu')
 
 # set seed function
-def set_seed(seed=None, seed_torch=True):
+def set_seed(seed=None, seed_torch=True, verbose=False):
   if seed is None:
     seed = np.random.choice(2 ** 32)
   np.random.seed(seed)
@@ -114,7 +116,7 @@ def set_seed(seed=None, seed_torch=True):
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
 
-  print(f'Random seed {seed} has been set.')    
+  if verbose: print(f'Random seed {seed} has been set.')    
 #############################################################
 
 #############################################################
@@ -177,9 +179,10 @@ elif 'Newton' in HOST:
 else:
     raise ValueError(f'Unknown host {HOST}')
 
-pprint(f'On date {datetag}, Running learning on host {HOST} with device {device}, pytorch=={torch.__version__}')
 #############################################################
-
+def welcome():
+    pprint(f'On date {datetag}, Running learning on host {HOST} with device {device}, pytorch=={torch.__version__}')
+    print('Welcome on', platform.platform())
 #############################################################
 # https://docs.python.org/3/library/dataclasses.html?highlight=dataclass#module-dataclasses
 from dataclasses import dataclass, asdict, field
@@ -187,8 +190,6 @@ from dataclasses import dataclass, asdict, field
 @dataclass
 class Params:
     
-    print('Welcome on', platform.platform())
-
     datetag: str = datetag # Set the date of the result's file
     loader: str = f'{DATAROOT}/Imagenet_urls_ILSVRC_2016.json' # File containing Imagenet's labels
     annotations_animal: str = f'{DATAROOT}/Animal10k_annotations.json' # File containing Animak10k's labels
@@ -197,7 +198,6 @@ class Params:
     # root: str = f'{DATAROOT}/Imagenet_{data_set_type}' # Directory containing images to perform the training
     folders: list = field(default_factory=lambda: ['val', 'train']) # Set the training and validation folders relative to the root
     tasks: list = field(default_factory=lambda: ['animal', 'dog', 'cat', 'bird']) # Set the semantic link to perfome different tasks
-    
     
     image_size: int = 224 #
     num_epochs: int = 2 # 
@@ -215,7 +215,7 @@ class Params:
     do_raw: bool = False
     do_translate: bool = False
     do_resize: bool = True # resize the image to args.image_size
-    do_mask: bool = True # add a circular mask on the cartesian input to match the retino input (circular window) 
+    do_mask: bool = True # add a circular mask on the Cartesian input to match the retino input (circular window) 
     do_scratch: bool = False # whether we use pretrained weights or not during transfer learning
     do_rotation: bool = False # just use this for rotation attacks
     do_rot_train: bool = False # just use this for training with rotation 
@@ -228,9 +228,9 @@ class Params:
     angles = np.linspace(-180, 180, 100, dtype=int)   # combination of angles used for training or attacks
     normalize: bool = True
     
-    
-    
-    set_seed(seed=seed, seed_torch=True)
+    verbose: bool = False
+    if verbose: welcome()
+    set_seed(seed=seed, seed_torch=True, verbose=verbose)
     
 args = Params()
 
@@ -578,10 +578,13 @@ def datasets_transforms(args, im_mean=im_mean, im_std=im_std,
                         num_workers=num_workers, pin_memory=True, shuffle=True, verbose=True):
     """
     
+
     
-    if angle is not none, applies a random rotation
+    TODO: obsolete = "if angle is not none, applies a random rotation"
     """
 
+
+    image_datasets 
     dataloaders = {}
     
     for folder in args.folders:
@@ -616,7 +619,7 @@ def image_datasets_transforms(args, im_mean=im_mean, im_std=im_std, verbose=True
         if verbose: 
             print(f"Loaded {len(image_datasets)} images under {folder}")  
 
-    return image_datasets
+    return image_datasets # bug ? on renvoie que le dernier dataset de args.folder
 
 
 def get_tens_from_path(path):
