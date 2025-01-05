@@ -195,7 +195,7 @@ class Params:
     datetag: str = datetag # Set the date of the result's file
     loader: str = f'{DATAROOT}/Imagenet_urls_ILSVRC_2016.json' # File containing Imagenet's labels
     annotations_animal: str = f'{DATAROOT}/Animal10k_annotations.json' # File containing Animak10k's labels
-    annotations: str = f'{DATAROOT}/LOC_val_solution_with_sizes.csv' # File containing Imagenets's labels
+    annotations_val: str = f'{DATAROOT}/LOC_val_solution_with_sizes.csv' # File containing Imagenets's labels
 
     # root: str = f'{DATAROOT}/Imagenet_{data_set_type}' # Directory containing images to perform the training
     folders: list = field(default_factory=lambda: ['val', 'train']) # Set the training and validation folders relative to the root
@@ -248,7 +248,7 @@ with open(json_fname, 'wt') as f:
 from nltk.corpus import wordnet as wn
 # import nltk
 # nltk.download('wordnet')
-# annotations = json.load(open(args.annotations) ) 
+
 with open(args.loader) as json_file:
     Imagenet_urls_ILSVRC_2016 = json.load(json_file)
     
@@ -280,7 +280,7 @@ for i_img, img_id in enumerate(Imagenet_urls_ILSVRC_2016):
 #---------------Get annotations from other the data set (Animal10k, ...)---------------
 def get_annotation(type):
     if 'csv' in type:
-        with open(args.annotations, 'r') as csv_file:
+        with open(args.annotations_val, 'r') as csv_file:
             return pd.read_csv(csv_file)
     else:
         return json.load(open(args.annotations_animal)) 

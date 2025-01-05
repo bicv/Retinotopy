@@ -1,32 +1,32 @@
-DIR=JeremieDaucePerrinet2024notebooks
-
+DIR=RetinoTopy
 #################@#################@#################@#################
 # 
-MESO_URL = lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science/
+MESO_URL=lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science/
+MESO_URL=lperrinet@193.51.217.241:science
+
 MESO_OPTS=-av -u --exclude pytorch.sif   -e "ssh -p 8822 -i ~/.ssh/id-ring-ecdsa"
 pull_meso:
-	rsync $(MESO_OPTS)   $(MESO_URL)/$(DIR)/cached_data .
+	rsync $(MESO_OPTS) $(MESO_URL)/$(DIR)/cached_data .
 
 push_meso:
 	rsync  $(MESO_OPTS) cached_data $(MESO_URL)/$(DIR) 
 
+
+DATADIR=data
+data_push_meso:
+	rsync $(MESO_OPTS) $(DATADIR)/Imagenet_* $(MESO_URL)/$(DIR)/$(DATADIR)
+
+data_pull_meso:
+	rsync  $(MESO_OPTS) $(MESO_URL)/$(DIR)/$(DATADIR)/Imagenet_* $(DATADIR)
+
+
 # TODO : push data to the mesocentre
 # ILSVRC2012_devkit_t12.tar.gz``, ``ILSVRC2012_img_train.tar`` and ``ILSVRC2012_img_val.tar
-
-
 # transfer dataset to the mesocentre
 # bootstrap: rsync  -av -u --exclude *.pt  -e "ssh -p 8822 -i ~/.ssh/id-ring-ecdsa" /data/perrinet.l/research/science/JNJER_PhD/RetinoTopy/JeremieDaucePerrinet2024notebooks lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science
 # data rsync  -av -u --exclude *.pt  -e "ssh -p 8822 -i ~/.ssh/id-ring-ecdsa" /data/JNJER/Deep_learning/data/Imagenet_focus lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science/Deep_learning/data/
 # rsync  -av -u --exclude *.pt  -e "ssh -p 8822 -i ~/.ssh/id-ring-ecdsa" /data/JNJER/Deep_learning/data/Imagenet_bbox lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science/Deep_learning/data/
 # rsync  -av -u -e "ssh -p 8822 -i ~/.ssh/id-ring-ecdsa" lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science/Deep_learning/data/Imagenet_bbox  /Volumes/data/2024_archives/2024_science/Deep_learning/data/
-# DATADIR=/data/JNJER/Deep_learning
-# data_push_meso:
-# 	rsync $(MESO_OPTS) $(DATADIR)/Deep_learning $(MESO_URL)
-
-# data_pull_meso:
-# 	rsync  $(MESO_OPTS) $(MESO_URL)/Deep_learning $(DATADIR)
-
-
 
 #################@#################@#################@#################
 
