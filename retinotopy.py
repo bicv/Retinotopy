@@ -225,7 +225,8 @@ class Params:
     do_mask: bool = True # add a circular mask on the Cartesian input to match the retino input (circular window) 
     do_scratch: bool = False # whether we use pretrained weights or not during transfer learning
     do_rotation: bool = False # just use this for rotation attacks
-    # todo remove as it is not used anymore do_rot_train: bool = False # just use this for training with rotation 
+    # todo remove as it is not used 
+    do_rot_train: bool = False # just use this for training with rotation 
     resolution: tuple = (11, 11) # resolution of the likelihood map
     size_ratio: float = 0.1 # how much of the image to use relative to radius
     do_saccade: bool = False # True to get multiple pov for eah image in the data set transform
@@ -532,8 +533,8 @@ def get_transforms(args, im_mean=im_mean, im_std=im_std):
         T.ToDtype(torch.float32, scale=True),  # Normalize expects float input
     ]   
 
-    # if args.do_rot_train: # used for augmentation and testing rotations
-    #     transforms.append(T.RandomRotation(degrees=(min(args.angles), max(args.angles)), interpolation=interpolation, expand=False))
+    if args.do_rot_train: # used for augmentation and testing rotations
+        transforms.append(T.RandomRotation(degrees=(min(args.angles), max(args.angles)), interpolation=interpolation, expand=False))
 
     if args.do_rotation and not args.do_saccade:
         args.batch_size_val, args.batch_size = 1, 1
@@ -581,6 +582,23 @@ def get_transforms(args, im_mean=im_mean, im_std=im_std):
     
     return T.Compose(transforms)
 
+def image_datasets_transforms(args, im_mean=im_mean, im_std=im_std, verbose=True):
+
+    image_datasets  = {}
+    for folder in args.folders:
+
+        # args.do_rot_train = False if folder != 'train' else args.do_rot_train
+        data_transform = get_transforms(args, im_mean=im_mean, im_std=im_std)
+
+        path = os.path.join(args.root, folder) # data path
+        image_datasets[folder] = torchvision.datasets.ImageFolder(path, transform=data_transform) # load the data
+
+        if verbose: 
+            print(f"Loaded {len(image_datasets[folder])} images under {folder}")  
+
+    return image_datasets # bug ? on renvoie que le dernier dataset de args.folder
+
+
 def datasets_transforms(args, im_mean=im_mean, im_std=im_std,
                         num_workers=num_workers, pin_memory=True, shuffle=True, verbose=True):
     """
@@ -606,36 +624,6 @@ def datasets_transforms(args, im_mean=im_mean, im_std=im_std,
         #     print(f"Loaded {len(image_datasets)} images under {folder}")  
 
     return dataloaders
-
-
-def image_datasets_transforms(args, im_mean=im_mean, im_std=im_std, verbose=True):
-
-    image_datasets  = {}
-    for folder in args.folders:
-
-        # args.do_rot_train = False if folder != 'train' else args.do_rot_train
-        data_transform = get_transforms(args, im_mean=im_mean, im_std=im_std)
-
-        path = os.path.join(args.root, folder) # data path
-        image_datasets[folder] = torchvision.datasets.ImageFolder(path, transform=data_transform) # load the data
-
-        if verbose: 
-            print(f"Loaded {len(image_datasets[folder])} images under {folder}")  
-
-    return image_datasets # bug ? on renvoie que le dernier dataset de args.folder
-
-
-def get_tens_from_path(path):
-    transform_tens = T.Compose([ 
-                    T.ToImage(),
-                    T.ToDtype(torch.float32, scale=True),
-                    T.Normalize(mean=im_mean, std=im_std)
-    ])
-    image = cv2.imread(path)
-    image_np = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    image_tens = transform_tens(image_np)
-    imshow(image_tens)
-    return (image_np, image_tens)
 
 
 #############################################################
