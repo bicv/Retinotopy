@@ -316,8 +316,7 @@ def imshow(img_list, im_mean=im_mean, im_std=im_std,
     #plt.tight_layout()
 
     if save:
-        for ext in ['pdf', 'png']:
-            fig.savefig(f'figs/{name}.{ext}',  **opts_savefig)
+        to_save(fig, name=name)
     
 def to_dev(args, item):
     if hasattr(args, 'device'):
@@ -1109,9 +1108,9 @@ def get_dist(results_dist):
             distances[pos].append((float(dist_.replace(',', '').replace('[', '').replace(']', ''))))
     return [np.zeros(len(distances[0])), np.array(distances[0]), np.array(distances[1])]
 
-def to_save(fig, name):
-    for ext in ['pdf', 'png']:
-        fig.savefig(f'figs/{name}.{ext}',  **opts_savefig)
+def to_save(fig, name, exts=['pdf', 'png'], folder='figs'):
+    for ext in exts:
+        fig.savefig(f'{folder}/{name}.{ext}',  **opts_savefig)
 
 def get_top_indices(tensor, k=5):
 
@@ -1197,5 +1196,4 @@ def display_heat_two(image, likelihood_maps, match, resolution, title_doc, save=
         plt.tight_layout()
 
     if save :
-        for ext in ['pdf', 'png']:
-            fig.savefig(f'figs/{title_doc}.{ext}',  **opts_savefig)
+        to_save(fig, name=title_doc)
