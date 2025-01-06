@@ -556,7 +556,6 @@ def get_transforms(args, im_mean=im_mean, im_std=im_std):
      
 
     if args.do_polar and not (args.do_saccade or args.do_zoom or args.do_translate): 
-        
         transforms.append(transform_apply_grid(get_grid(args), ('base' if not args.do_rotation else None)))
 
     if args.do_resize and not (args.do_polar or args.do_saccade or args.do_zoom):
@@ -576,6 +575,7 @@ def get_transforms(args, im_mean=im_mean, im_std=im_std):
         if not args.do_polar and not args.do_raw:
             mask = to_dev(args, make_mask(args.image_size))
             transforms.append(ApplyMask(mask))
+
     if args.normalize:
         transforms.append(T.Normalize(mean=im_mean, std=im_std)) # to normalize colors on the imagenet dataset
     
@@ -733,7 +733,7 @@ def train_model(args, model, dataloaders, each_steps=64, verbose=True):
     if torch.cuda.is_available(): torch.cuda.empty_cache()        
     return model, df_train
 
-def charge_model(model_name='resnet50', model_path=None, do_scratch=False, do_circular=False, verbose=True):
+def load_model(model_name='resnet50', model_path=None, do_scratch=False, do_circular=False, verbose=True):
     # get the architecture of the network
             
     if model_name=='resnet18':
