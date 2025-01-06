@@ -33,7 +33,8 @@
 # Make imagenet directory
 mkdir -p Imagenet_full
 cd Imagenet_full
-#
+
+
 # Extract the training data:
 #
 # Create train directory; move .tar file; change directory
