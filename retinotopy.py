@@ -172,7 +172,7 @@ elif 'DESKTOP-27VNO0E' in HOST:
 elif 'm-gpu01' in HOST: 
     DATAROOT = 'data'
     batch_size = 50
-    num_workers = 8
+    num_workers = 1
 
 elif 'Newton' in HOST: 
     
