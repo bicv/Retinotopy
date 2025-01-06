@@ -168,6 +168,11 @@ elif 'DESKTOP-27VNO0E' in HOST:
     DATAROOT = 'd:\\Data'
     batch_size = 50
     num_workers = 8
+    
+elif 'm-gpu01' in HOST: 
+    DATAROOT = 'data'
+    batch_size = 50
+    num_workers = 8
 
 elif 'Newton' in HOST: 
     
