@@ -24,3 +24,6 @@ seaborn
 optuna
 optuna-dashboard
 watermark
+moviepy
+imageio
+imageio-ffmpeg

@@ -1117,6 +1117,25 @@ def to_save(fig, name, exts=['pdf', 'png'], folder='figs'):
     for ext in exts:
         fig.savefig(f'{folder}/{name}.{ext}',  **opts_savefig)
 
+# https://moviepy.readthedocs.io/en/latest/getting_started/videoclips.html#imagesequenceclip
+# def make_mp4(mp4name, fnames, fps, do_delete=True):
+#     from moviepy.video.io.ImageSequenceClip import ImageSequenceClip
+#     clip = ImageSequenceClip(fnames, fps=fps)
+#     clip.write_videofile(mp4name, fps=fps, codec='libx264', verbose=False, logger=None)
+#     if do_delete: 
+#         for fname in fnames: os.remove(fname)
+#     return mp4name
+
+def make_mp4(mp4name, fnames, fps, do_delete=True):
+    # from moviepy.video.io.ImageSequenceClip import ImageSequenceClip
+    from moviepy import ImageSequenceClip
+    clip = ImageSequenceClip(fnames, fps=fps)
+    clip.write_videofile(mp4name, fps=fps, logger=None)
+    if do_delete: 
+        for fname in fnames: os.remove(fname)
+    return mp4name
+
+
 def get_top_indices(tensor, k=5):
 
     try : 
