@@ -735,7 +735,7 @@ def load_model(model_name='resnet50', model_path=None, do_scratch=False, do_circ
     
     if not(model_path is None):
         if verbose: print(f'loading .... {model_path}')
-        model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
+        model.load_state_dict(torch.load(model_path, map_location=torch.device(device), weights_only=True))
 
     if do_circular:
         model = make_padding_circular_again(model)
@@ -1114,11 +1114,11 @@ def to_save(fig, name, exts=['pdf', 'png'], folder='figs'):
 #         for fname in fnames: os.remove(fname)
 #     return mp4name
 
-def make_mp4(mp4name, fnames, fps, do_delete=True):
-    # from moviepy.video.io.ImageSequenceClip import ImageSequenceClip
-    from moviepy import ImageSequenceClip
+def make_mp4(mp4name, fnames, fps, codec='mpeg4', do_delete=True):
+    from moviepy.video.io.ImageSequenceClip import ImageSequenceClip
+    # from moviepy import ImageSequenceClip
     clip = ImageSequenceClip(fnames, fps=fps)
-    clip.write_videofile(mp4name, fps=fps, logger=None)
+    clip.write_videofile(mp4name, codec=codec, fps=fps, logger=None)
     if do_delete: 
         for fname in fnames: os.remove(fname)
     return mp4name
