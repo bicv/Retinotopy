@@ -136,6 +136,10 @@ elif HOST in ['CONEC-LID-001']: # emmy
     # TODO test 
     DATAROOT = '/scratch/ImageNet'
     num_workers = 16
+elif HOST in ['CONECT-LID-01']: # faraday
+    # DATAROOT = '/envau/userspace/perrinet.l/data'
+    DATAROOT = 'data'
+    num_workers = 16    
 elif HOST in ['CONEC-LID-002']: # faraday
     # DATAROOT = '/envau/userspace/perrinet.l/data'
     DATAROOT = '/scratch/ImageNet'
@@ -163,12 +167,10 @@ elif 'Ahsoka' in HOST:
     DATAROOT = '/Volumes/data/2024_archives/2024_science/Deep_learning/data'
     num_workers = 24
     device = torch.device('cpu')
-    
 elif 'DESKTOP-27VNO0E' in HOST: 
     DATAROOT = 'd:\\Data'
     batch_size = 50
     num_workers = 8
-    
 elif 'm-gpu01' in HOST: 
     DATAROOT = 'data'
     batch_size = 50
