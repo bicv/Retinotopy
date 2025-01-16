@@ -100,7 +100,8 @@ if torch.backends.mps.is_available():
     device = torch.device('mps')
 elif torch.cuda.is_available():
     device = torch.device('cuda')
-    print('Running on GPU : ', torch.cuda.get_device_name(), '#GPU=', torch.cuda.device_count())
+    print('Running on GPU : ', torch.cuda.get_device_name(), '#GPU=', torch.cuda.device_count())    
+    torch.cuda.empty_cache()
 else:
     device = torch.device('cpu')
 
@@ -131,14 +132,10 @@ if '.cluster' in HOST: # mesocentre
 elif HOST in ['babbage']: # 
     DATAROOT = '/data/Deep_learning/data'
     num_workers = 2
-elif HOST in ['CONEC-LID-001']: # emmy
-    DATAROOT = '/data/JNJER/Deep_learning/data'
-    # TODO test 
-    DATAROOT = '/scratch/ImageNet'
-    num_workers = 16
-elif HOST in ['CONECT-LID-01']: # faraday
+elif HOST in ['CONECT-LID-01']: # emmy
     # DATAROOT = '/envau/userspace/perrinet.l/data'
     DATAROOT = 'data'
+    batch_size = 50
     num_workers = 16    
 elif HOST in ['CONEC-LID-002']: # faraday
     # DATAROOT = '/envau/userspace/perrinet.l/data'
