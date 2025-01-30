@@ -17,12 +17,12 @@ data_push_meso:
 	rsync $(MESO_OPTS) $(DATADIR)/Imagenet_* $(MESO_URL)/$(DIR)/$(DATADIR)
 
 data_pull_meso:
-	rsync  $(MESO_OPTS) $(MESO_URL)/$(DIR)/$(DATADIR)/Imagenet_* $(DATADIR)
+	rsync  $(MESO_OPTS) --delete $(MESO_URL)/$(DIR)/$(DATADIR)/Imagenet_* $(DATADIR)
 
 #################@#################@#################@#################
 
 optuna:
-	optuna-dashboard sqlite:///cached_data/2024-05-14_optuna.sqlite3
+	optuna-dashboard sqlite:///cached_data/2025-01-05_optuna.sqlite3
 
 #################@#################@#################@#################
 
