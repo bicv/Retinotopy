@@ -15,7 +15,7 @@ import time
 tic = time.time()
 from time import strftime, gmtime
 datetag = strftime("%Y-%m-%d", gmtime())
-# datetag = '2024-05-24'
+#datetag = '2024-05-24'
 datetag = '2025-01-05'
 import cv2
 #############################################################
@@ -555,8 +555,9 @@ def get_transforms(args, im_mean=im_mean, im_std=im_std):
         transforms.append(transform_apply_grid(grid_translate, 'multiple'))
      
 
-    if args.do_polar and not (args.do_saccade or args.do_zoom or args.do_translate): 
-        transforms.append(transform_apply_grid(get_grid(args), ('base' if not args.do_rotation else None)))
+    if args.do_polar and not (args.do_saccade or args.do_zoom or args.do_translate):
+        grid_polar = get_grid(args) if not args.do_rotation else get_grid(args).repeat(len(args.angles), 1, 1, 1)
+        transforms.append(transform_apply_grid(grid_polar, ('base' if not args.do_rotation else None)))
 
     if args.do_resize and not (args.do_polar or args.do_saccade or args.do_zoom):
         transforms.append(T.Resize(int(args.image_size), interpolation=interpolation, antialias=True))
