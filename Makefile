@@ -13,11 +13,12 @@ push_meso:
 
 
 DATADIR=data
+DATAPATH=/Volumes/SSD1TO/Deep_learning/data
 data_push_meso:
-	rsync $(MESO_OPTS) $(DATADIR)/Imagenet_* $(MESO_URL)/$(DIR)/$(DATADIR)
+	rsync $(MESO_OPTS) --dry-run $(DATAPATH)/Imagenet_* $(MESO_URL)/$(DIR)/$(DATADIR)
 
 data_pull_meso:
-	rsync  $(MESO_OPTS) --delete $(MESO_URL)/$(DIR)/$(DATADIR)/Imagenet_* $(DATADIR)
+	rsync  $(MESO_OPTS) --delete $(MESO_URL)/$(DIR)/$(DATADIR)/Imagenet_* $(DATAPATH)
 
 #################@#################@#################@#################
 
