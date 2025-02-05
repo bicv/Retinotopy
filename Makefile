@@ -4,7 +4,7 @@ DIR=Retinotopy
 MESO_URL=lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science/
 MESO_URL=lperrinet@193.51.217.241:science
 
-MESO_OPTS=-av -u --info=progress2 --exclude pytorch.sif   -e "ssh -p 8822 -i ~/.ssh/id-ring-ecdsa"
+MESO_OPTS=-av -u --info=progress2 --exclude pytorch.sif --exclude ._n*  -e "ssh -p 8822 -i ~/.ssh/id-ring-ecdsa"
 pull_meso:
 	rsync $(MESO_OPTS) $(MESO_URL)/$(DIR)/cached_data .
 
@@ -13,11 +13,12 @@ push_meso:
 
 
 DATADIR=data
+DATAPATH=/Volumes/SSD1TO/Deep_learning/data
 data_push_meso:
-	rsync $(MESO_OPTS) $(DATADIR)/Imagenet_* $(MESO_URL)/$(DIR)/$(DATADIR)
+	rsync $(MESO_OPTS) --dry-run $(DATAPATH)/Imagenet_* $(MESO_URL)/$(DIR)/$(DATADIR)
 
 data_pull_meso:
-	rsync  $(MESO_OPTS) --delete $(MESO_URL)/$(DIR)/$(DATADIR)/Imagenet_* $(DATADIR)
+	rsync  $(MESO_OPTS) --delete $(MESO_URL)/$(DIR)/$(DATADIR)/Imagenet_* $(DATAPATH)
 
 #################@#################@#################@#################
 
