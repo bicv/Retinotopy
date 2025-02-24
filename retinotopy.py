@@ -795,7 +795,7 @@ def compute_likelihood_map(args, model, image, resolution=(11, 11), # how many f
                                                     pos_W.ravel()[idx_start:idx_stop])):
                 h, w = int(h), int(w)
                 cropped_image = crop(image, h-box_size//2, w-box_size//2, box_size, box_size)
-                
+                cropped_image = cropped_image.to(device)
                 cropped_images[i_fixation, ...] = data_transform(cropped_image)
             print(cropped_images.shape)
             cropped_images = T.Resize((224, 224), interpolation=interpolation, antialias=True)(cropped_images)
