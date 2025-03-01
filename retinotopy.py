@@ -160,7 +160,7 @@ elif 'obiwan' in HOST:
     DATAROOT = 'data'
     DATAROOT = '/Volumes/SSD1TO/Deep_learning/data'
     interpolation = T.InterpolationMode.NEAREST
-    padding_mode = "zeros"
+    padding_mode = "reflection"
     num_workers = 2
 elif 'Ahsoka' in HOST: 
     DATAROOT = '/Volumes/backups/2023_archives/2023_science/JNJER_PhD/data'
