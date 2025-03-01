@@ -125,6 +125,8 @@ data_cache = 'cached_data'
 os.makedirs(data_cache, exist_ok=True)
 
 interpolation = T.InterpolationMode.BILINEAR
+padding_mode = "border"
+
 batch_size = 75
 if '.cluster' in HOST: # mesocentre
     DATAROOT = '/scratch/lperrinet/science/Deep_learning/data'
@@ -154,10 +156,11 @@ elif 'obiwan' in HOST:
     # DATAROOT = '/Volumes/UnaTera/2023_archives/2023_science/JNJER_PhD/data'
     DATAROOT = '/Volumes/data/2024_archives/2024_science/Deep_learning/data'
     DATAROOT = '/Volumes/SSD1TO/ImageNet'
-    DATAROOT = '/Volumes/SSD1TO/Deep_learning/data'
     DATAROOT = '/Volumes/SSD1TO/Deep_learning/ILSVRC2010_ImageNet'
     DATAROOT = 'data'
+    DATAROOT = '/Volumes/SSD1TO/Deep_learning/data'
     interpolation = T.InterpolationMode.NEAREST
+    padding_mode = "zeros"
     num_workers = 2
 elif 'Ahsoka' in HOST: 
     DATAROOT = '/Volumes/backups/2023_archives/2023_science/JNJER_PhD/data'
@@ -476,7 +479,7 @@ def multi_sacade_map(args):
 def apply_grid(image, grid): 
     image = image.repeat(grid.shape[0],1,1,1)
     return nnf.grid_sample(image, grid, 
-                            padding_mode="border", align_corners=False).squeeze(dim=0)
+                            padding_mode=padding_mode, align_corners=False).squeeze(dim=0)
 
 class transform_apply_grid(object): 
     def __init__(self, logPolar_grid, mode):
