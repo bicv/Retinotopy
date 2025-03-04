@@ -202,6 +202,7 @@ class Params:
     datetag: str = datetag # Set the date of the result's file
     loader: str = 'data/Imagenet_urls_ILSVRC_2016.json' # File containing Imagenet's labels
     annotations_animal: str = 'data/Animal10k_annotations.json' # File containing Animak10k's labels
+    annotations_train: str = 'data/LOC_train_solution.csv' # File containing Imagenets's labels
     annotations_val: str = 'data/LOC_val_solution.csv' # File containing Imagenets's labels
 
     # root: str = f'{DATAROOT}/Imagenet_{data_set_type}' # Directory containing images to perform the training
