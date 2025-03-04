@@ -200,9 +200,9 @@ from dataclasses import dataclass, asdict, field
 class Params:
     
     datetag: str = datetag # Set the date of the result's file
-    loader: str = f'{DATAROOT}/Imagenet_urls_ILSVRC_2016.json' # File containing Imagenet's labels
-    annotations_animal: str = f'{DATAROOT}/Animal10k_annotations.json' # File containing Animak10k's labels
-    annotations_val: str = f'{DATAROOT}/LOC_val_solution_with_sizes.csv' # File containing Imagenets's labels
+    loader: str = 'data/Imagenet_urls_ILSVRC_2016.json' # File containing Imagenet's labels
+    annotations_animal: str = 'data/Animal10k_annotations.json' # File containing Animak10k's labels
+    annotations_val: str = 'data/LOC_val_solution.csv' # File containing Imagenets's labels
 
     # root: str = f'{DATAROOT}/Imagenet_{data_set_type}' # Directory containing images to perform the training
     folders: list = field(default_factory=lambda: ['val', 'train']) # Set the training and validation folders relative to the root
@@ -272,7 +272,6 @@ for task in args.tasks:
     
 #----------------Get the label for the Imagenet categorization------------------------
 
-
 for i_img, img_id in enumerate(Imagenet_urls_ILSVRC_2016):
     syn_= wn.synset_from_pos_and_offset('n', int(img_id.replace('n','')))
     sem_ = syn_.hypernym_paths()[0]
@@ -289,8 +288,8 @@ for i_img, img_id in enumerate(Imagenet_urls_ILSVRC_2016):
 #---------------Get annotations from other the data set (Animal10k, ...)---------------
 def get_annotation(type):
 
-    annotations_animal: str = f'{DATAROOT}/Animal10k_annotations.json' # File containing Animak10k's labels
-    annotations_val: str = f'{DATAROOT}/LOC_val_solution_with_sizes.csv' # File containing Imagenets's labels
+    # annotations_animal: str = f'{DATAROOT}/Animal10k_annotations.json' # File containing Animak10k's labels
+    # annotations_val: str = f'{DATAROOT}/LOC_val_solution_with_sizes.csv' # File containing Imagenets's labels
 
     if 'csv' in type:
         with open(args.annotations_val, 'r') as csv_file:
