@@ -236,7 +236,7 @@ class Params:
     do_zoom: bool = False # True to apply a zoom (range from args.size_ratio to (2 + args.size_ratio) +/- 0.1 )
     method: str = 'valid' #select sampling for mapping between full = with border & valid = no border
     saccade_type: str = 'multi' #select sampling for mapping between multi = with multiple ratio & grid = same sample ratio 
-    angles = np.linspace(-180, 180, 100, dtype=int)   # combination of angles used for training or attacks
+    angles = np.linspace(-180, 180, 100)   # combination of angles used for training or attacks
     normalize: bool = True
     
     verbose: bool = False
@@ -521,7 +521,7 @@ class CleanRotations_class(object):
         images = images.unsqueeze(dim=0) if len(images) == 3 else images
         for image in images:
             for angle in self.angles:
-                temp.append(T.functional.rotate(image, angle=int(angle), expand = False)) 
+                temp.append(T.functional.rotate(image, angle=angle, expand = False)) 
         return torch.stack(temp)
 
 def CleanRotations_function(image, mask, angles=[0]):
@@ -590,6 +590,7 @@ def get_transforms(args, im_mean=im_mean, im_std=im_std):
     
     return T.Compose(transforms)
 
+from torchvision.datasets import ImageFolder
 def image_datasets_transforms(args, im_mean=im_mean, im_std=im_std, verbose=True):
 
     image_datasets  = {}
@@ -599,7 +600,7 @@ def image_datasets_transforms(args, im_mean=im_mean, im_std=im_std, verbose=True
         data_transform = get_transforms(args, im_mean=im_mean, im_std=im_std)
 
         path = os.path.join(args.root, folder) # data path
-        image_datasets[folder] = torchvision.datasets.ImageFolder(path, transform=data_transform) # load the data
+        image_datasets[folder] = ImageFolder(path, transform=data_transform) # load the data
 
         if verbose: 
             print(f"Loaded {len(image_datasets[folder])} images under {folder}")  
