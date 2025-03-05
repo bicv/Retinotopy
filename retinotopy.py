@@ -617,7 +617,6 @@ def image_datasets_transforms(args, im_mean=im_mean, im_std=im_std, verbose=True
     image_datasets  = {}
     for folder in args.folders:
 
-        # args.do_rot_train = False if folder != 'train' else args.do_rot_train
         data_transform = get_transforms(args, im_mean=im_mean, im_std=im_std)
 
         # load the data
