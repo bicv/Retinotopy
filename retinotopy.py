@@ -591,6 +591,27 @@ def get_transforms(args, im_mean=im_mean, im_std=im_std):
     return T.Compose(transforms)
 
 from torchvision.datasets import ImageFolder
+
+def is_valid_file(path):
+    """
+    Filter out files starting with '._'
+    
+    Args:
+        path (str): Full path to the file
+    
+    Returns:
+        bool: True if the file should be included, False otherwise
+    """
+    # Get the filename from the full path
+    filename = os.path.basename(path)
+    
+    # Return False if filename starts with '._'
+    if filename.startswith('._'):
+        return False
+    
+    return True
+
+
 def image_datasets_transforms(args, im_mean=im_mean, im_std=im_std, verbose=True):
 
     image_datasets  = {}
@@ -599,8 +620,11 @@ def image_datasets_transforms(args, im_mean=im_mean, im_std=im_std, verbose=True
         # args.do_rot_train = False if folder != 'train' else args.do_rot_train
         data_transform = get_transforms(args, im_mean=im_mean, im_std=im_std)
 
+        # load the data
         path = os.path.join(args.root, folder) # data path
-        image_datasets[folder] = ImageFolder(path, transform=data_transform) # load the data
+        image_datasets[folder] = ImageFolder(path, 
+                                             transform=data_transform,
+                                             is_valid_file=is_valid_file)
 
         if verbose: 
             print(f"Loaded {len(image_datasets[folder])} images under {folder}")  
