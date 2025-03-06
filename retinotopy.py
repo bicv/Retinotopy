@@ -127,10 +127,14 @@ os.makedirs(data_cache, exist_ok=True)
 interpolation = T.InterpolationMode.BILINEAR
 padding_mode = "border"
 
-batch_size = 75
+batch_size = 250
 if '.cluster' in HOST: # mesocentre
     DATAROOT = '/scratch/lperrinet/science/Deep_learning/data'
     num_workers = 8
+elif 'm-gpu' in HOST: 
+    DATAROOT = 'data'
+    # batch_size = 50
+    num_workers = 1
 elif HOST in ['babbage']: # 
     DATAROOT = '/data/Deep_learning/data'
     num_workers = 2
@@ -171,13 +175,7 @@ elif 'DESKTOP-27VNO0E' in HOST:
     DATAROOT = 'd:\\Data'
     batch_size = 50
     num_workers = 8
-elif 'm-gpu' in HOST: 
-    DATAROOT = 'data'
-    batch_size = 50
-    num_workers = 1
-
 elif 'Newton' in HOST: 
-    
     if os.path.isdir('/media/jnjer/Transcend/Data'):
         DATAROOT = '/media/jnjer/Transcend/Data'
     else:
@@ -215,8 +213,8 @@ class Params:
     seed: int = 1998 # Set the seed for reproducibility 
     batch_size: int = batch_size # Set number of images per input batch
     batch_size_val: int = batch_size # Set number of images per input batch
-    lr: float = 0.00015 # Set learning rate 
-    momentum: float = .06 # Set the momentum
+    lr: float = 5.e-5 # Set learning rate 
+    momentum: float = .02 # Set the momentum
     beta2: float = 0 # Set the second momentum - use SGD if set to 0
     rs_min: float = 0.00
     rs_max: float = -5.00
