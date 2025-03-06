@@ -135,6 +135,7 @@ if USER=='uvb28bo': # Jean Zay
     DATAROOT = '../data'
     num_workers = 8
     batch_size = 512
+    print('Running on Jean Zay')
 elif '.cluster' in HOST: # mesocentre
     DATAROOT = '/scratch/lperrinet/science/Deep_learning/data'
     num_workers = 8
