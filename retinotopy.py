@@ -128,7 +128,14 @@ interpolation = T.InterpolationMode.BILINEAR
 padding_mode = "border"
 
 batch_size = 250
-if '.cluster' in HOST: # mesocentre
+
+USER = os.environ['USER']  # username
+
+if USER=='uvb28bo': # Jean Zay
+    DATAROOT = '../data'
+    num_workers = 8
+    batch_size = 512
+elif '.cluster' in HOST: # mesocentre
     DATAROOT = '/scratch/lperrinet/science/Deep_learning/data'
     num_workers = 8
 elif 'm-gpu' in HOST: 
@@ -136,7 +143,6 @@ elif 'm-gpu' in HOST:
     # batch_size = 50
     num_workers = 2
     batch_size = 512
-
 elif HOST in ['babbage']: # 
     DATAROOT = '/data/Deep_learning/data'
     num_workers = 2
