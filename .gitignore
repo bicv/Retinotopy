@@ -160,3 +160,5 @@ cython_debug/
 #.idea/
 cached_data
 pytorch.sif
+data/Imagenet_bbox
+data/Imagenet_full
