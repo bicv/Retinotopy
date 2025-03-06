@@ -132,10 +132,11 @@ batch_size = 250
 USER = os.environ['USER']  # username
 
 if USER=='uvb28bo': # Jean Zay
-    DATAROOT = '../data'
+    # DATAROOT = '../data'
+    DATAROOT = f'{os.environ['SCRATCH']}/data'
     num_workers = 8
     batch_size = 512
-    print('Running on Jean Zay')
+    print('Running on Jean Zay with', torch.cuda.get_device_name(), 'and', torch.cuda.device_count(), 'GPUs', f'{DATAROOT=})
 elif '.cluster' in HOST: # mesocentre
     DATAROOT = '/scratch/lperrinet/science/Deep_learning/data'
     num_workers = 8
