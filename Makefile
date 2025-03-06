@@ -11,7 +11,6 @@ pull_meso:
 push_meso:
 	rsync  $(MESO_OPTS) cached_data $(MESO_URL)/$(DIR) 
 
-
 DATADIR=data
 DATAPATH=/Volumes/SSD1TO/Deep_learning/data
 data_push_meso:
@@ -19,6 +18,13 @@ data_push_meso:
 
 data_pull_meso:
 	rsync  $(MESO_OPTS) --delete $(MESO_URL)/$(DIR)/$(DATADIR)/Imagenet_* $(DATAPATH)
+#################@#################@#################@#################
+J=jupyter nbconvert --ExecutePreprocessor.kernel_name=python3 --ExecutePreprocessor.timeout=0 --allow-errors --execute
+# JN=$(J) --to markdown  --stdout # for dev
+JN=$(J) --to notebook  --inplace # for the final touch
+all:
+	# find -s . -name "*.ipynb" -exec ls -ltr {} \;
+	find -s . -name "*.ipynb" -exec $(JN) {} \;
 
 #################@#################@#################@#################
 
@@ -44,3 +50,10 @@ venv:
 	
 update:
 	pip install --upgrade -r requirements.txt
+#################@#################@#################@#################
+
+clean:
+	find  /Volumes/SSD1TO/Deep_learning/data/Imagenet_bbox -type f -name ._n\* -delete
+	find  /Volumes/SSD1TO/Deep_learning/data/Imagenet_full -type f -name ._n\* -delete
+
+#################@#################@#################@#################

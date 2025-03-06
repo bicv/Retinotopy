@@ -200,9 +200,10 @@ from dataclasses import dataclass, asdict, field
 class Params:
     
     datetag: str = datetag # Set the date of the result's file
-    loader: str = f'{DATAROOT}/Imagenet_urls_ILSVRC_2016.json' # File containing Imagenet's labels
-    annotations_animal: str = f'{DATAROOT}/Animal10k_annotations.json' # File containing Animak10k's labels
-    annotations_val: str = f'{DATAROOT}/LOC_val_solution_with_sizes.csv' # File containing Imagenets's labels
+    loader: str = 'data/Imagenet_urls_ILSVRC_2016.json' # File containing Imagenet's labels
+    annotations_animal: str = 'data/Animal10k_annotations.json' # File containing Animak10k's labels
+    annotations_train: str = 'data/LOC_train_solution.csv' # File containing Imagenets's labels
+    annotations_val: str = 'data/LOC_val_solution.csv' # File containing Imagenets's labels
 
     # root: str = f'{DATAROOT}/Imagenet_{data_set_type}' # Directory containing images to perform the training
     folders: list = field(default_factory=lambda: ['val', 'train']) # Set the training and validation folders relative to the root
@@ -235,7 +236,7 @@ class Params:
     do_zoom: bool = False # True to apply a zoom (range from args.size_ratio to (2 + args.size_ratio) +/- 0.1 )
     method: str = 'valid' #select sampling for mapping between full = with border & valid = no border
     saccade_type: str = 'multi' #select sampling for mapping between multi = with multiple ratio & grid = same sample ratio 
-    angles = np.linspace(-180, 180, 100, dtype=int)   # combination of angles used for training or attacks
+    angles = np.linspace(-180, 180, 100)   # combination of angles used for training or attacks
     normalize: bool = True
     
     verbose: bool = False
@@ -272,7 +273,6 @@ for task in args.tasks:
     
 #----------------Get the label for the Imagenet categorization------------------------
 
-
 for i_img, img_id in enumerate(Imagenet_urls_ILSVRC_2016):
     syn_= wn.synset_from_pos_and_offset('n', int(img_id.replace('n','')))
     sem_ = syn_.hypernym_paths()[0]
@@ -289,8 +289,8 @@ for i_img, img_id in enumerate(Imagenet_urls_ILSVRC_2016):
 #---------------Get annotations from other the data set (Animal10k, ...)---------------
 def get_annotation(type):
 
-    annotations_animal: str = f'{DATAROOT}/Animal10k_annotations.json' # File containing Animak10k's labels
-    annotations_val: str = f'{DATAROOT}/LOC_val_solution_with_sizes.csv' # File containing Imagenets's labels
+    # annotations_animal: str = f'{DATAROOT}/Animal10k_annotations.json' # File containing Animak10k's labels
+    # annotations_val: str = f'{DATAROOT}/LOC_val_solution_with_sizes.csv' # File containing Imagenets's labels
 
     if 'csv' in type:
         with open(args.annotations_val, 'r') as csv_file:
@@ -521,7 +521,7 @@ class CleanRotations_class(object):
         images = images.unsqueeze(dim=0) if len(images) == 3 else images
         for image in images:
             for angle in self.angles:
-                temp.append(T.functional.rotate(image, angle=int(angle), expand = False)) 
+                temp.append(T.functional.rotate(image, angle=angle, expand = False)) 
         return torch.stack(temp)
 
 def CleanRotations_function(image, mask, angles=[0]):
@@ -590,6 +590,28 @@ def get_transforms(args, im_mean=im_mean, im_std=im_std):
     
     return T.Compose(transforms)
 
+from torchvision.datasets import ImageFolder
+
+def is_valid_file(path):
+    """
+    Filter out files starting with '._'
+    
+    Args:
+        path (str): Full path to the file
+    
+    Returns:
+        bool: True if the file should be included, False otherwise
+    """
+    # Get the filename from the full path
+    filename = os.path.basename(path)
+    
+    # Return False if filename starts with '._'
+    if filename.startswith('._'):
+        return False
+    
+    return True
+
+
 def image_datasets_transforms(args, im_mean=im_mean, im_std=im_std, verbose=True):
 
     image_datasets  = {}
@@ -598,8 +620,11 @@ def image_datasets_transforms(args, im_mean=im_mean, im_std=im_std, verbose=True
         # args.do_rot_train = False if folder != 'train' else args.do_rot_train
         data_transform = get_transforms(args, im_mean=im_mean, im_std=im_std)
 
+        # load the data
         path = os.path.join(args.root, folder) # data path
-        image_datasets[folder] = torchvision.datasets.ImageFolder(path, transform=data_transform) # load the data
+        image_datasets[folder] = ImageFolder(path, 
+                                             transform=data_transform,
+                                             is_valid_file=is_valid_file)
 
         if verbose: 
             print(f"Loaded {len(image_datasets[folder])} images under {folder}")  
