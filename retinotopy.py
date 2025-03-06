@@ -134,7 +134,9 @@ if '.cluster' in HOST: # mesocentre
 elif 'm-gpu' in HOST: 
     DATAROOT = 'data'
     # batch_size = 50
-    num_workers = 1
+    num_workers = 2
+    batch_size = 512
+
 elif HOST in ['babbage']: # 
     DATAROOT = '/data/Deep_learning/data'
     num_workers = 2
