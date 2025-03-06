@@ -192,7 +192,7 @@ elif 'Newton' in HOST:
     num_workers = 4
     
 else:
-    raise ValueError(f'Unknown host {HOST}')
+    raise ValueError(f'Unknown host {HOST=} / {USER=}')
 
 #############################################################
 def welcome():
