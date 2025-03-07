@@ -236,7 +236,7 @@ class Params:
     do_translate: bool = False
     do_resize: bool = True # resize the image to args.image_size
     do_mask: bool = True # add a circular mask on the Cartesian input to match the retino input (circular window) 
-    do_scratch: bool = True # whether we use pretrained weights or not during transfer learning
+    do_scratch: bool = False # whether we use pretrained weights or not during transfer learning
     do_rotation: bool = False # just use this for rotation attacks
     # todo remove as it is not used 
     do_rot_train: bool = False # just use this for training with rotation 
@@ -763,42 +763,36 @@ def train_model(args, model, dataloaders, each_steps=64, verbose=True):
     if torch.cuda.is_available(): torch.cuda.empty_cache()        
     return model, df_train
 
-import torchvision.models as models
 
-models_url = {'resnet18': url="https://download.pytorch.org/models/resnet18-f37072fd.pth",
-              'resnet50': url="https://download.pytorch.org/models/resnet50-11ad3fa6.pth",
-              'resnet101': url="https://download.pytorch.org/models/resnet101-cd907fc2.pth"}
+def apply_weights(model, model_path, verbose=True):
 
-def apply_weights(model_name):
-    model_path = os.path.join(data_cache, f'{model_name}.pth')
-    
-    if not os.path.exists(model_path):
-        model = models.__dict__[model_name](pretrained=True)
-        torch.save(model.state_dict(), model_path)
-    else:
-        model = models.__dict__[model_name]()
-        model.load_state_dict(torch.load(model_path), map_location=torch.device(device), weights_only=True)
+    if verbose: print(f'loading .... {model_path}')
+    model.load_state_dict(torch.load(model_path), map_location=torch.device(device), weights_only=True)
     
     return model
 
+import torchvision.models as models
 def load_model(model_name='resnet50', model_path=None, do_scratch=False, do_circular=False, verbose=True):
     # get the architecture of the network
             
     if model_name=='resnet18':
         # model = torchvision.models.resnet18(weights=None if do_scratch else torchvision.models.ResNet18_Weights.DEFAULT)
-        model = torchvision.models.resnet18(weights=None)
+        model = models.resnet18(weights=None)
     elif model_name=='resnet50':
         # model = torchvision.models.resnet50(weights=None if do_scratch else torchvision.models.ResNet50_Weights.DEFAULT)
-        model = torchvision.models.resnet50(weights=None)
+        model = models.resnet50(weights=None)
     elif model_name=='resnet101':
         # model = torchvision.models.resnet101(weights=None if do_scratch else torchvision.models.ResNet101_Weights.DEFAULT)
-        model = torchvision.models.resnet101(weights=None)
+        model = models.resnet101(weights=None)
     else:
         raise ValueError(f'Unknown model {model_name}')
-    
-    if not(model_path is None):
-        if verbose: print(f'loading .... {model_path}')
-        model.load_state_dict(torch.load(model_path, map_location=torch.device(device), weights_only=True))
+
+    if model_path is None: # we start from a scratch model
+        if not(do_scratch): # we start from a pretrained model
+            model = apply_weights(model, 
+                          os.path.join(data_cache, f'{model_name}.pth'), verbose=verbose)
+    else: # we wish to use a saved model
+        model = apply_weights(model, model_path, verbose=True)
 
     if do_circular:
         model = make_padding_circular_again(model)
