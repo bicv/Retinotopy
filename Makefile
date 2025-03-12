@@ -1,4 +1,5 @@
 DIR=Retinotopy
+default: learn
 #################@#################@#################@#################
 # 
 MESO_URL=lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science/
@@ -22,6 +23,9 @@ data_pull_meso:
 J=jupyter nbconvert --ExecutePreprocessor.kernel_name=python3 --ExecutePreprocessor.timeout=0 --allow-errors --execute
 # JN=$(J) --to markdown  --stdout # for dev
 JN=$(J) --to notebook  --inplace # for the final touch
+learn:
+	ipython 10_transfer_learning.ipynb 
+	
 all:
 	# find -s . -name "*.ipynb" -exec ls -ltr {} \;
 	find -s . -name "*.ipynb" -exec $(JN) {} \;

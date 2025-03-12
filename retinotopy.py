@@ -120,6 +120,16 @@ def set_seed(seed=None, seed_torch=True, verbose=False):
     torch.backends.cudnn.deterministic = True
 
   if verbose: print(f'Random seed {seed} has been set.')    
+
+def print_gpu_memory():
+    print(f"Allocated memory: {torch.cuda.memory_allocated() / 1024**2:.2f} MB")
+    print(f"Cached memory: {torch.cuda.memory_reserved() / 1024**2:.2f} MB")
+    print(f">> Variables occupying GPU memory:")
+    for var_name, var in globals().items():
+        if torch.is_tensor(var) and var.is_cuda:
+            print(f"{var_name}: {var.element_size() * var.nelement() / 1024**2:.2f} MB")
+
+    
 #############################################################
 
 #############################################################
