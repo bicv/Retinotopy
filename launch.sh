@@ -1,5 +1,5 @@
 #!/bin/sh
-#SBATCH -J Retinotopy
+#SBATCH -J Retino
 #SBATCH  -A fsx@v100
 #SBATCH  -C v100-32g
 #SBATCH --qos=qos_gpu-t4
