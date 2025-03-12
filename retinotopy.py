@@ -230,7 +230,7 @@ class Params:
     tasks: list = field(default_factory=lambda: ['animal', 'dog', 'cat', 'bird']) # Set the semantic link to perfome different tasks
     
     image_size: int = 224 #
-    num_epochs: int = 20 # 
+    num_epochs: int = 10 # 
     n_train_stop: int = 0 # set to zero to use all images
     seed: int = 1998 # Set the seed for reproducibility 
     batch_size: int = batch_size # Set number of images per input batch
