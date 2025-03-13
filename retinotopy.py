@@ -12,7 +12,6 @@ def touch(fname): open(fname, 'w').close()
 # import requests
 import math
 import time
-tic = time.time()
 from time import strftime, gmtime
 datetag = strftime("%Y-%m-%d", gmtime())
 #datetag = '2024-05-24'
@@ -31,8 +30,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.figure import SubplotParams
 subplotpars = SubplotParams(left=0.125, right=.95, bottom=0.25, top=.975, wspace=0.05, hspace=0.05,)
-# import seaborn as sns
-# import sklearn.metrics
 
 plt.rc('xtick', labelsize=18)    # fontsize of the tick labels
 plt.rc('ytick', labelsize=18)    # fontsize of the tick labels
@@ -42,7 +39,7 @@ from matplotlib import font_manager
 # Fig variables
 cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["darkblue",  "lightsteelblue", "lavender", "white", "seashell", "mistyrose",  "firebrick"])
 
-fig_width = 15
+fig_width = 20
 fontsize = 14
 font = font_manager.FontProperties(weight='normal', size=fontsize)
 dpi = 'figure'
@@ -50,17 +47,17 @@ dpi = 200
 opts_savefig = dict(dpi=dpi, bbox_inches='tight', pad_inches=0, edgecolor=None)
 
 colors = ['b', 'r', 'k', 'g', 'm', 'y']
-fig_width = 20
 phi = (np.sqrt(5)+1)/2 # golden ratio for the figures :-)
 
 #to plot & display 
-def pprint(message): #display function
+def pprint(message:str): 
+    "Display function for strings"
     print('-'*len(message))
     print(message)
     print('-'*len(message))
 
-def transparent_cmap(cmap, N=255):
-    "Copy colormap and set alpha values"
+def transparent_cmap(cmap:matplotlib.colors.ListedColormap, N:int=255):
+    "Copy colormap and set alpha values so its transparent at lower bound"
     mycmap = cmap
     mycmap._init()
     mycmap._lut[:, -1] = np.linspace(0, 1, N+4, endpoint=True)
@@ -75,11 +72,11 @@ def transparent_cmap(cmap, N=255):
 #     print(old_file_name, new_file_name)
 #     os.rename(old_file_name, new_file_name)
 
-def get_filename(data_cache, datetag, data_set_type, model_name, do_polar):
-    # return f'{data_cache}/{datetag}_{data_set_type}_{model_name}_{do_polar=}'
+def get_filename(data_cache:str, datetag:str, data_set_type:str, model_name:str, do_polar:bool):
+    """Generate a string filename based on the datetag, data, model 
+    or transformation used during the process"""
     return f"{data_cache}/{datetag}_{data_set_type}_{model_name}_{'retino' if do_polar else 'cartesian'}"
 
-exts = ['pdf', 'svg', 'png']
 exts = ['pdf', 'png']
 #############################################################
 
@@ -108,7 +105,8 @@ else:
     device = torch.device('cpu')
 
 # set seed function
-def set_seed(seed=None, seed_torch=True, verbose=False):
+def set_seed(seed=None, seed_torch:bool=True, verbose:bool=False):
+  "Define a random seed or use a predefined seed for repeatability"
   if seed is None:
     seed = np.random.choice(2 ** 32)
   np.random.seed(seed)
@@ -276,50 +274,59 @@ if not(os.path.isfile(json_fname)):
 #############################################################
 # Wordnet
 from nltk.corpus import wordnet as wn
-# import nltk
-# nltk.download('wordnet')
 
-with open(args.loader) as json_file:
-    Imagenet_urls_ILSVRC_2016 = json.load(json_file)
-    
-match = {}
-labels = []
-revlabels_dico = {}
-labels_dico = {}
-i_labels_dico = {}
-
-for task in args.tasks:
-    match[task] = []
-    
 #----------------Get the label for the Imagenet categorization------------------------
 
-for i_img, img_id in enumerate(Imagenet_urls_ILSVRC_2016):
-    syn_= wn.synset_from_pos_and_offset('n', int(img_id.replace('n','')))
-    sem_ = syn_.hypernym_paths()[0]
-    label = syn_.name().split(".")[0]
-    labels.append(label)
-    i_labels_dico[label] = i_img
-    labels_dico[label] = img_id
-    revlabels_dico[img_id] = label
-    for i in np.arange(len(sem_)):
-        for task in args.tasks:
-            if sem_[i].lemmas()[0].name() in task :
-                match[task].append(i_img)
+def get_labels(args:dict, all_refs:bool=False):   
+
+    with open(args.loader) as json_file:
+        Imagenet_urls_ILSVRC_2016 = json.load(json_file)
+
+    match = {}
+    labels = []
+
+    if all_refs:
+        revlabels_dico = {}
+        labels_dico = {}
+        i_labels_dico = {}
+
+    for task in args.tasks:
+        match[task] = []
+
+    for i_img, img_id in enumerate(Imagenet_urls_ILSVRC_2016):
+        syn_= wn.synset_from_pos_and_offset('n', int(img_id.replace('n','')))
+        sem_ = syn_.hypernym_paths()[0]
+        label = syn_.name().split(".")[0]
+        labels.append(label)
+        if all_refs:
+            i_labels_dico[label] = i_img
+            labels_dico[label] = img_id
+            revlabels_dico[img_id] = label
+        for i in np.arange(len(sem_)):
+            for task in args.tasks:
+                if sem_[i].lemmas()[0].name() in task :
+                    match[task].append(i_img)
+    
+    if all_refs:
+        return match, labels, revlabels_dico, labels_dico, i_labels_dico  
+    else:
+        return match, labels
+
+match, labels = get_labels(args)
 
 #---------------Get annotations from other the data set (Animal10k, ...)---------------
-def get_annotation(type):
-
-    # annotations_animal: str = f'{DATAROOT}/Animal10k_annotations.json' # File containing Animak10k's labels
-    # annotations_val: str = f'{DATAROOT}/LOC_val_solution_with_sizes.csv' # File containing Imagenets's labels
-
+def get_annotation(type:str):
+    """ Return the correct data set annotation
+    based on the format:
+    - csv for Imagenet
+    - json for Aniaml10k
+    """
     if 'csv' in type:
         with open(args.annotations_val, 'r') as csv_file:
             return pd.read_csv(csv_file)
     else:
         return json.load(open(args.annotations_animal)) 
-
-
-
+    
 #############################################################
 
 
@@ -811,65 +818,6 @@ def load_model(model_name='resnet50', model_path=None, do_scratch=False, do_circ
 #############################################################
 
 
-#############################################################
-
-def get_positions(args, image):
-    _, H, W = image.shape
-
-    min_size = np.min((H, W))
-    box_size = int(min_size*args.size_ratio)
-    #if args.method=='valid':
-    if False:
-        if H < W:
-            shift = (0, (W-H)/2)
-        else:
-            shift = ((H-W)/2, 0)
-
-        pos_h = np.linspace(shift[0]+box_size/2, min_size+shift[0]-box_size/2, args.resolution[0], endpoint=True)
-        pos_w = np.linspace(shift[1]+box_size/2, min_size+shift[1]-box_size/2, args.resolution[1], endpoint=True)
-    else:
-        pos_h = np.linspace(0, H, args.resolution[0]+2, endpoint=True)[1:-1]
-        pos_w = np.linspace(0, W, args.resolution[1]+2, endpoint=True)[1:-1]
-
-    pos_H, pos_W = np.meshgrid(pos_h, pos_w)
-
-    return pos_H, pos_W, box_size
-
-def compute_likelihood_map(args, model, image, resolution=(11, 11), # how many fixation points to use
-                           size_ratio=args.size_ratio, # how much of the image to use relative to radius
-                           N_batch=125):
-
-    pos_H, pos_W, box_size = get_positions(args, image)
-    args.device = device
-    data_transform = get_transforms(args)
-    # image = image.to(device)
-    # model = model.to(device)
-
-    N_fixations = resolution[0] * resolution[1]
-    proba_label = torch.zeros((N_fixations, 1000))
-    for idx_start in np.arange(0, N_fixations, N_batch):
-        idx_stop = np.min((idx_start+N_batch, N_fixations))
-            
-        with torch.no_grad():
-            cropped_images = torch.empty((idx_stop-idx_start, 3, box_size, box_size), device=device)
-
-            for i_fixation, (h, w) in enumerate(zip(pos_H.ravel()[idx_start:idx_stop], 
-                                                    pos_W.ravel()[idx_start:idx_stop])):
-                h, w = int(h), int(w)
-                cropped_image = crop(image, h-box_size//2, w-box_size//2, box_size, box_size)
-                cropped_image = cropped_image.to(device)
-                cropped_images[i_fixation, ...] = data_transform(cropped_image)
-            print(cropped_images.shape)
-            cropped_images = T.Resize((224, 224), interpolation=interpolation, antialias=True)(cropped_images)
-            print(cropped_images.shape)
-            outputs = torch.nn.functional.softmax(model(cropped_images), dim=1)
-        
-        proba_label[idx_start:idx_stop, :] = outputs#.detach().cpu().numpy()
-    if torch.cuda.is_available(): torch.cuda.empty_cache()
-        
-    return proba_label
-    #return pos_H, pos_W, proba_label
-
 def clean_resize(args, image):
     image = T.Resize(args.image_size, interpolation=interpolation, antialias=True)(image)
     return T.CenterCrop((int(args.image_size), int(args.image_size)))(image)
@@ -885,43 +833,6 @@ def get_batch(args, model, full_image, size=100):
         proba_label[idx_start:idx_stop, :] = outputs#.detach().cpu().numpy()
     return proba_label
 
-def rolling_map(args, image, retino_grid, set_resolution=args.resolution, subsample_size=None):
-    if subsample_size is None:
-        #subsample_size = args.image_size
-        subsample_size = min(image.shape[1], image.shape[2]) * args.size_ratio
-    preds_im = []
-    for i in np.linspace(0, (image.shape[1]-subsample_size), set_resolution[0], dtype=int):
-        for j in np.linspace(0, (image.shape[2]-subsample_size), set_resolution[1], dtype=int):
-            if args.do_polar:
-                preds_im.append(apply_grid(image[:,i:(subsample_size+i),j:(subsample_size+j)].unsqueeze(0), retino_grid))
-            else:
-                #preds_im.append(clean_resize(args, image[:,i:(subsample_size+i),j:(subsample_size+j)]))
-                preds_im.append(T.Resize((int(args.image_size), int(args.image_size)),
-                    interpolation=interpolation, antialias=True)(image[:,i:(subsample_size+i),j:(subsample_size+j)]))
-    return torch.stack(preds_im).reshape(set_resolution[0],set_resolution[1], 3, args.image_size, args.image_size).squeeze(0)
-
-def rolling_map_LP(args, origin_size, image, retino_grid):
-    all_image_size = np.linspace(min(origin_size), args.image_size, round(args.resolution[0]/2), dtype=int)
-    grids_images = []
-    for num, i in enumerate(np.linspace(1, args.resolution[0], round(args.resolution[0]/2), dtype=int)):
-        resolution_grid = (i,i)
-        subsample_size = all_image_size[num]
-        grids_images.append(rolling_map(args, image, retino_grid, resolution_grid, subsample_size))
-        
-    if args.do_polar:
-        grids_images[0] = apply_grid(image.unsqueeze(0), retino_grid)
-    else:
-        #grids_images[0] = clean_resize(args, image)
-        grids_images[0] = T.Resize((int(args.image_size), int(args.image_size)), interpolation=interpolation, antialias=True)(image)
-    for i in np.linspace(0, len(grids_images)-2, len(grids_images)-1, dtype=int):
-        grids_images[i+1][1:-1,1:-1] = grids_images[i]
-        
-    grids_images = grids_images[i+1][:, :, ::].reshape(args.resolution[0] * args.resolution[1], 3,
-                                                                args.image_size, args.image_size)
-    if args.do_polar:
-        return grids_images
-    else:
-        return grids_images * to_dev(args, make_mask(args.image_size))
 
 #############################################################
 
@@ -987,83 +898,6 @@ def no_axis_title(ax, title):
     ax.set_title(f'{title}')
     return 
 
-def get_three_points(ground_true_indices, resolution):
-
-    
-    X_mid = math.ceil(np.mean(ground_true_indices[0]%min(args.resolution)))
-    Y_mid = math.ceil(np.mean(ground_true_indices[0]//min(args.resolution)))
-    
-    if X_mid < ((len(resolution)//2)+1) : 
-        X_bord = max(ground_true_indices[0]%resolution[0])
-    else :
-        X_bord = min(ground_true_indices[0]%resolution[0])
-    
-    if Y_mid < ((len(resolution)//2)+1) : 
-        
-        Y_bord = max(ground_true_indices[0]//resolution[1])
-    else :
-        Y_bord = min(ground_true_indices[0]//resolution[1])
-    
-    if X_mid < ((len(resolution)//2)+1) :
-        if Y_mid < ((len(resolution)//2)+1) :
-            end = (len(resolution),len(resolution))
-        else:
-            end = (0,len(resolution))
-    else:
-        if Y_mid < ((len(resolution)//2)+1) :
-            end = (len(resolution),0)
-        else:
-            end = (0,0)
-
-    return [(X_mid , Y_mid), (X_bord , Y_bord), end]
-
-def get_points_between(p1, p2):
-    points = []
-    x1, y1 = p1
-    x2, y2 = p2
-    
-    dx = abs(x2 - x1)
-    dy = abs(y2 - y1)
-    
-    sx = 1 if x2 > x1 else -1
-    sy = 1 if y2 > y1 else -1
-    
-    err = dx - dy
-    
-    x, y = x1, y1
-    first_step = True
-    
-    while (x, y) != (x2, y2):
-        if not first_step:  # Skip adding the starting point
-            points.append((x, y))
-        
-        e2 = 2 * err
-        if e2 > -dy:
-            err -= dy
-            x += sx
-        if e2 < dx:
-            err += dx
-            y += sy
-        
-        first_step = False
-    
-    # Ensure at least one point is returned and is not equal to the start or end point
-
-    if len(points) == 0 :
-        mid_x = (x1 + x2) // 2
-        mid_y = round_up((y1 + y2), 2)
-        points = [(mid_x, mid_y)]
-    
-    return points
-
-
-
-def get_like_point(heatmap, resolution, three_points):
-    mid_point = heatmap[(three_points[0][0]*resolution[0]) + three_points[0][1]]
-    in_point = heatmap[(three_points[1][0]*resolution[0]) + three_points[1][1]]
-    ext_point = heatmap[(three_points[2][0]*resolution[0]) + three_points[2][1]]
-    return mid_point, in_point, ext_point
-
 
 def get_ground_true(args, image_name, annotations, mode):
     
@@ -1091,8 +925,6 @@ def get_ground_true(args, image_name, annotations, mode):
                 return None, None, np.ones(1), origin_size # return None for value we cant caculate and 1 to stop at the next condition
             
     ground_true_indices = np.where(ground_true.reshape(args.resolution[0]*args.resolution[1]) > 0)
-    
-    three_points = get_three_points(ground_true_indices, args.resolution)
     
     return ground_true_indices, three_points, ground_true, origin_size
 
@@ -1160,13 +992,6 @@ def get_best_Iou(result_Iou, best_loc):
         best_Iou.append(float(Iou[best_loc]))
     return best_Iou
 
-def get_dist(results_dist):
-    
-    distances = {0:[], 1:[]}
-    for dist in results_dist:
-        for pos, dist_ in enumerate(dist.split(' ')) :
-            distances[pos].append((float(dist_.replace(',', '').replace('[', '').replace(']', ''))))
-    return [np.zeros(len(distances[0])), np.array(distances[0]), np.array(distances[1])]
 
 def to_save(fig, name, exts=['pdf', 'png'], folder='figs'):
     for ext in exts:
