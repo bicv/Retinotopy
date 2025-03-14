@@ -833,7 +833,27 @@ def get_batch(args, model, full_image, size=100):
         proba_label[idx_start:idx_stop, :] = outputs#.detach().cpu().numpy()
     return proba_label
 
+def get_positions(args, image):
+    _, H, W = image.shape
 
+    min_size = np.min((H, W))
+    box_size = int(min_size*args.size_ratio)
+    #if args.method=='valid':
+    if False:
+        if H < W:
+            shift = (0, (W-H)/2)
+        else:
+            shift = ((H-W)/2, 0)
+
+        pos_h = np.linspace(shift[0]+box_size/2, min_size+shift[0]-box_size/2, args.resolution[0], endpoint=True)
+        pos_w = np.linspace(shift[1]+box_size/2, min_size+shift[1]-box_size/2, args.resolution[1], endpoint=True)
+    else:
+        pos_h = np.linspace(0, H, args.resolution[0]+2, endpoint=True)[1:-1]
+        pos_w = np.linspace(0, W, args.resolution[1]+2, endpoint=True)[1:-1]
+
+    pos_H, pos_W = np.meshgrid(pos_h, pos_w)
+
+    return pos_H, pos_W, box_size
 #############################################################
 
 def to_tuple(str_size):
