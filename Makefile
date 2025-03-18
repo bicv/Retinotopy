@@ -5,20 +5,37 @@ default: learn
 MESO_URL=lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science/
 MESO_URL=lperrinet@193.51.217.241:science
 
-MESO_OPTS=-av -u --info=progress2 --exclude pytorch.sif --exclude ._n*  -e "ssh -p 8822 -i ~/.ssh/id-ring-ecdsa"
+SSH_OPTS=-av -u --info=progress2 --exclude pytorch.sif --exclude ._n*  -e "ssh -p 8822 -i ~/.ssh/id-ring-ecdsa"
 pull_meso:
-	rsync $(MESO_OPTS) $(MESO_URL)/$(DIR)/cached_data .
+	rsync $(SSH_OPTS) $(MESO_URL)/$(DIR)/cached_data .
 
 push_meso:
-	rsync  $(MESO_OPTS) cached_data $(MESO_URL)/$(DIR) 
+	rsync  $(SSH_OPTS) cached_data $(MESO_URL)/$(DIR) 
+
+# cd /envau/work/neopto/USERS/PERRINET/Retinotopy 
+ENVAU_URL=perrinet.l@niolon.intlocal.univ-amu.fr:/envau/work/neopto/USERS/PERRINET
+pull_envau:
+	rsync $(SSH_OPTS) $(ENVAU_URL)/$(DIR)/cached_data .
+
+push_envau:
+	rsync  $(SSH_OPTS) cached_data $(ENVAU_URL)/$(DIR) 
+
+JEANZAY_URL=uvb28bo@jean-zay3.idris.fr:/lustre/fswork/projects/rech/fsx/uvb28bo/
+pull_jeanzay:
+	rsync $(SSH_OPTS) $(JEANZAY_URL)/$(DIR)/cached_data .
+
+push_jeanzay:
+	rsync  $(SSH_OPTS) cached_data $(JEANZAY_URL)/$(DIR) 
+
+rsync -av perrinet.l@niolon.intlocal.univ-amu.fr:/envau/work/neopto/USERS/PERRINET/Retinotopy/cached_data .
 
 DATADIR=data
 DATAPATH=/Volumes/SSD1TO/Deep_learning/data
 data_push_meso:
-	rsync $(MESO_OPTS) --dry-run $(DATAPATH)/Imagenet_* $(MESO_URL)/$(DIR)/$(DATADIR)
+	rsync $(SSH_OPTS) --dry-run $(DATAPATH)/Imagenet_* $(MESO_URL)/$(DIR)/$(DATADIR)
 
 data_pull_meso:
-	rsync  $(MESO_OPTS) --delete $(MESO_URL)/$(DIR)/$(DATADIR)/Imagenet_* $(DATAPATH)
+	rsync  $(SSH_OPTS) --delete $(MESO_URL)/$(DIR)/$(DATADIR)/Imagenet_* $(DATAPATH)
 #################@#################@#################@#################
 J=jupyter nbconvert --ExecutePreprocessor.kernel_name=python3 --ExecutePreprocessor.timeout=0 --allow-errors --execute
 # JN=$(J) --to markdown  --stdout # for dev
