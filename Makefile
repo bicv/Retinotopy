@@ -20,12 +20,13 @@ pull_envau:
 push_envau:
 	rsync  $(SSH_OPTS) cached_data $(ENVAU_URL)/$(DIR) 
 
+SSH_OPTS_JEANZAY=-av -u --info=progress2 --exclude pytorch.sif --exclude ._n*  -e "ssh -i ~/.ssh/id-ring-ecdsa"
 JEANZAY_URL=uvb28bo@jean-zay3.idris.fr:/lustre/fswork/projects/rech/fsx/uvb28bo/
 pull_jeanzay:
-	rsync $(SSH_OPTS) $(JEANZAY_URL)/$(DIR)/cached_data .
+	rsync $(SSH_OPTS_JEANZAY) $(JEANZAY_URL)/$(DIR)/cached_data .
 
 push_jeanzay:
-	rsync  $(SSH_OPTS) cached_data $(JEANZAY_URL)/$(DIR) 
+	rsync  $(SSH_OPTS_JEANZAY) cached_data $(JEANZAY_URL)/$(DIR) 
 
 rsync -av perrinet.l@niolon.intlocal.univ-amu.fr:/envau/work/neopto/USERS/PERRINET/Retinotopy/cached_data .
 
