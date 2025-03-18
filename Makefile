@@ -5,28 +5,28 @@ default: learn
 MESO_URL=lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science/
 MESO_URL=lperrinet@193.51.217.241:science
 
-SSH_OPTS=-av -u --info=progress2 --exclude pytorch.sif --exclude ._n*  -e "ssh -p 8822 -i ~/.ssh/id-ring-ecdsa"
+SSH_OPTS_MESO=-av -u --info=progress2 --exclude pytorch.sif --exclude ._n*  -e "ssh -p 8822 -i ~/.ssh/id-ring-ecdsa"
 pull_meso:
-	rsync $(SSH_OPTS) $(MESO_URL)/$(DIR)/cached_data .
+	rsync $(SSH_OPTS_MESO) $(MESO_URL)/$(DIR)/cached_data .
 
 push_meso:
-	rsync  $(SSH_OPTS) cached_data $(MESO_URL)/$(DIR) 
+	rsync  $(SSH_OPTS_MESO) cached_data $(MESO_URL)/$(DIR) 
 
 # cd /envau/work/neopto/USERS/PERRINET/Retinotopy 
 ENVAU_URL=perrinet.l@niolon.intlocal.univ-amu.fr:/envau/work/neopto/USERS/PERRINET
+SSH_OPTS=-av -u --info=progress2 --exclude pytorch.sif --exclude ._n*  -e "ssh -i ~/.ssh/id-ring-ecdsa"
 pull_envau:
 	rsync $(SSH_OPTS) $(ENVAU_URL)/$(DIR)/cached_data .
 
 push_envau:
 	rsync  $(SSH_OPTS) cached_data $(ENVAU_URL)/$(DIR) 
 
-SSH_OPTS_JEANZAY=-av -u --info=progress2 --exclude pytorch.sif --exclude ._n*  -e "ssh -i ~/.ssh/id-ring-ecdsa"
 JEANZAY_URL=uvb28bo@jean-zay3.idris.fr:/lustre/fswork/projects/rech/fsx/uvb28bo/
 pull_jeanzay:
-	rsync $(SSH_OPTS_JEANZAY) $(JEANZAY_URL)/$(DIR)/cached_data .
+	rsync $(SSH_OPTS) $(JEANZAY_URL)/$(DIR)/cached_data .
 
 push_jeanzay:
-	rsync  $(SSH_OPTS_JEANZAY) cached_data $(JEANZAY_URL)/$(DIR) 
+	rsync  $(SSH_OPTS) cached_data $(JEANZAY_URL)/$(DIR) 
 
 rsync -av perrinet.l@niolon.intlocal.univ-amu.fr:/envau/work/neopto/USERS/PERRINET/Retinotopy/cached_data .
 
@@ -43,6 +43,10 @@ J=jupyter nbconvert --ExecutePreprocessor.kernel_name=python3 --ExecutePreproces
 JN=$(J) --to notebook  --inplace # for the final touch
 learn:
 	ipython 10_transfer_learning.ipynb 
+	ipython 14_optimise.ipynb	
+	ipython 16_rotation_attack.ipynb
+	ipython 17_zoom_attack.ipynb
+	ipython 18_translation_attack.ipynb
 	
 all:
 	# find -s . -name "*.ipynb" -exec ls -ltr {} \;
