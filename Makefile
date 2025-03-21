@@ -46,8 +46,8 @@ notebooks_intro:
 	find -s . -name "0*.ipynb" -exec $(JN) {} \;
 
 notebooks_learn:
-	ipython 10_transfer_learning.ipynb 
-	ipython 14_optimise.ipynb	
+	# ipython 10_transfer_learning.ipynb 
+	# ipython 14_optimise.ipynb	
 	ipython 16_rotation_attack.ipynb
 	ipython 17_zoom_attack.ipynb
 	ipython 18_translation_attack.ipynb
