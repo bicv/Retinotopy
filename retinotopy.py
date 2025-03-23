@@ -97,6 +97,7 @@ torch.set_printoptions(precision=3, linewidth=140, sci_mode=False)
 
 if torch.backends.mps.is_available():
     device = torch.device('mps')
+    device = torch.device('cpu') # HACK to avoid using MPS on macOS silicon chips
 elif torch.cuda.is_available():
     device = torch.device('cuda')
     print('Running on GPU : ', torch.cuda.get_device_name(), '#GPU=', torch.cuda.device_count())    
@@ -312,8 +313,8 @@ def get_labels(args:dict, all_refs:bool=False):
     else:
         return match, labels
 
-match, labels = get_labels(args)
-
+# match, labels = get_labels(args)
+match, labels, revlabels_dico, labels_dico, i_labels_dico = get_labels(args, all_refs=True)
 #---------------Get annotations from other the data set (Animal10k, ...)---------------
 def get_annotation(type:str):
     """ Return the correct data set annotation
@@ -785,7 +786,7 @@ def apply_weights(model, model_path, verbose=True):
     if verbose: print(f'loading .... {model_path}')
     # model.load_state_dict(torch.load(model_path), map_location=torch.device(device), weights_only=True)
     # model.load_state_dict(torch.load(model_path), weights_only=True)
-    model.load_state_dict(torch.load(model_path))
+    model.load_state_dict(torch.load(model_path), map_location=torch.device(device))
     return model
 
 import torchvision.models as models
