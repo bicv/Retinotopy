@@ -1,5 +1,5 @@
 DIR=Retinotopy
-default: notebooks_learn notebooks_maps
+default: notebooks_intro notebooks_learn notebooks_maps
 #################@#################@#################@#################
 # 
 MESO_URL=lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science/
@@ -43,7 +43,8 @@ J=jupyter nbconvert --ExecutePreprocessor.kernel_name=python3 --ExecutePreproces
 JN=$(J) --to notebook --inplace # for the final touch
 
 notebooks_intro:
-	find -s . -name "0*.ipynb" -exec $(JN) {} \;
+	$(JN) 09_benchmark-dataloader.ipynb
+	# find -s . -name "0*.ipynb" -exec $(JN) {} \;
 
 notebooks_learn:
 	# ipython 10_transfer_learning.ipynb 
