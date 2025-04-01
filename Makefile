@@ -49,9 +49,10 @@ notebooks_intro:
 notebooks_learn:
 	# ipython 10_transfer_learning.ipynb 
 	# ipython 14_optimise.ipynb	
-	ipython 16_rotation_attack.ipynb
+	# ipython 16_rotation_attack.ipynb
 	ipython 17_zoom_attack.ipynb
 	ipython 18_translation_attack.ipynb
+	ipython 14_optimise.ipynb	
 	
 notebooks_maps:
 	ipython 20_compute_likelihood_map.ipynb 21_multiple_likelihood_map.ipynb 22_scan_mean_nan.ipynb 25_stats_of_likelihood_map.ipynb 26_stats_likelihood_map_Animal10K.ipynb 28_grad_cam_complete_evaluation.ipynb
