@@ -3,8 +3,8 @@
 #SBATCH  -A fsx@v100
 #SBATCH  -C v100-32g
 #SBATCH --qos=qos_gpu-t4
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1
+#SBATCH --nodes=4
+#SBATCH --ntasks-per-node=4
 #SBATCH --cpus-per-task=10
 #SBATCH --gres=gpu:1
 #SBATCH --hint=nomultithread
