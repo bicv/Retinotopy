@@ -1,5 +1,5 @@
 DIR=Retinotopy
-default: notebooks_intro notebooks_learn notebooks_maps
+default:notebooks_learn notebooks_maps
 #################@#################@#################@#################
 # 
 MESO_URL=lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science/
@@ -49,7 +49,7 @@ notebooks_intro:
 notebooks_learn:
 	# ipython 10_transfer_learning.ipynb 
 	# ipython 14_optimise.ipynb	
-	# ipython 16_rotation_attack.ipynb
+	ipython 16_rotation_attack.ipynb
 	ipython 17_zoom_attack.ipynb
 	ipython 18_translation_attack.ipynb
 	ipython 14_optimise.ipynb	
