@@ -228,7 +228,7 @@ class Params:
     folders: list = field(default_factory=lambda: ['val', 'train']) # Set the training and validation folders relative to the root
     tasks: list = field(default_factory=lambda: ['animal', 'dog', 'cat', 'bird']) # Set the semantic link to perfome different tasks
     
-    image_size: int = 224 #
+    image_size: int = 224 # base resolution of the image (224, 224)
     num_epochs: int = 10 # 
     n_train_stop: int = 0 # set to zero to use all images
     seed: int = 1998 # Set the seed for reproducibility 
@@ -237,18 +237,16 @@ class Params:
     lr: float = 5.e-5 # Set learning rate 
     momentum: float = .02 # Set the momentum
     beta2: float = 0 # Set the second momentum - use SGD if set to 0
-    rs_min: float = 0.00
-    rs_max: float = -5.00
+    rs_min: float = 0.00 # Set minimum radius of the log-polar grid
+    rs_max: float = -5.00 # Set maximum radius of the log-polar grid
     
     do_polar: bool = True # use a retinotopic mapping
-    do_raw: bool = False
-    do_translate: bool = False
+    do_raw: bool = False # use pytorch pre-trained weights and image transform
+    do_translate: bool = False # use translation attacks
     do_resize: bool = True # resize the image to args.image_size
     do_mask: bool = True # add a circular mask on the Cartesian input to match the retino input (circular window) 
     do_scratch: bool = False # whether we use pretrained weights or not during transfer learning
     do_rotation: bool = False # just use this for rotation attacks
-    # todo remove as it is not used 
-    do_rot_train: bool = False # just use this for training with rotation 
     resolution: tuple = (11, 11) # resolution of the likelihood map
     size_ratio: float = 0.1 # how much of the image to use relative to radius
     do_saccade: bool = False # True to get multiple pov for eah image in the data set transform
@@ -256,7 +254,7 @@ class Params:
     method: str = 'valid' #select sampling for mapping between full = with border & valid = no border
     saccade_type: str = 'multi' #select sampling for mapping between multi = with multiple ratio & grid = same sample ratio 
     angles = np.linspace(-180, 180, 100)   # combination of angles used for training or attacks
-    normalize: bool = True
+    normalize: bool = True # use pytrorch normalization for imagenet
     
     verbose: bool = False
     if verbose: welcome()
@@ -279,6 +277,15 @@ from nltk.corpus import wordnet as wn
 #----------------Get the label for the Imagenet categorization------------------------
 
 def get_labels(args:dict, all_refs:bool=False):   
+    """ Get the labels for the Imagenet data set
+    based on the json file containing ground true labels
+    match : dictionary with the task as key and the list corresponding label as value
+    labels : list of labels for the data set
+    revlabels_dico : dictionary with the synset as key and the label as value
+    labels_dico : dictionary with the label as key and the synset as value
+    i_labels_dico : dictionary with the label as key and the index of the label in the list as value
+    if all_refs is True, return all the references for the labels
+    """
 
     with open(args.loader) as json_file:
         Imagenet_urls_ILSVRC_2016 = json.load(json_file)
@@ -294,19 +301,19 @@ def get_labels(args:dict, all_refs:bool=False):
     for task in args.tasks:
         match[task] = []
 
-    for i_img, img_id in enumerate(Imagenet_urls_ILSVRC_2016):
-        syn_= wn.synset_from_pos_and_offset('n', int(img_id.replace('n','')))
+    for i_id, img_id in enumerate(Imagenet_urls_ILSVRC_2016):
+        syn_= wn.synset_from_pos_and_offset('n', int(img_id.replace('n',''))) # synset for the label
         sem_ = syn_.hypernym_paths()[0]
         label = syn_.name().split(".")[0]
         labels.append(label)
         if all_refs:
-            i_labels_dico[label] = i_img
+            i_labels_dico[label] = i_id
             labels_dico[label] = img_id
             revlabels_dico[img_id] = label
         for i in np.arange(len(sem_)):
             for task in args.tasks:
                 if sem_[i].lemmas()[0].name() in task :
-                    match[task].append(i_img)
+                    match[task].append(i_id)
     
     if all_refs:
         return match, labels, revlabels_dico, labels_dico, i_labels_dico  
@@ -344,8 +351,8 @@ def imgs_to_np(img_list, im_mean=im_mean, im_std=im_std):
     inp = np.clip(inp, 0, 1)
     return(inp)
 
-def imshow(img_list, im_mean=im_mean, im_std=im_std, 
-           title=None, fig_height=7, fig=None, ax=None, save=False, name=None): #allow to display the input image
+def imshow(img_list, im_mean:list=im_mean, im_std:list=im_std, 
+           title:str=None, fig_height:int=7, fig=None, ax:matplotlib.axes.Axes=None, save:bool=False, name:str=None): #allow to display the input image
     if ax is None:
         fig, ax = plt.subplots(figsize=(fig_height*len(img_list), fig_height))
     inp = imgs_to_np(img_list, im_mean=im_mean, im_std=im_std)
@@ -359,38 +366,58 @@ def imshow(img_list, im_mean=im_mean, im_std=im_std,
     if save:
         to_save(fig, name=name)
     
-def to_dev(args, item):
+def to_dev(args:dict, item:any):
+    """Move the item to the device specified in args."""
     if hasattr(args, 'device'):
         return item.to(args.device)
     else:
         return item
-
-def get_grid(args, endpoint=False):
-
-    rs_ = torch.logspace(args.rs_min, args.rs_max, args.image_size, base=2) 
-    if endpoint:
-        ts_ = torch.linspace(0, torch.pi*2, args.image_size)
-    else:
-        ts_ = torch.linspace(0, torch.pi*2, args.image_size+1)[:-1]     
-    grid_xs = torch.outer(rs_, torch.cos(ts_)) 
-    grid_ys = torch.outer(rs_, torch.sin(ts_))
     
-    return to_dev(args, torch.stack((grid_xs, grid_ys), 2))
+def get_start(start_value:float=0.1):
+    """Get the start value for log2 based on the ratio."""
+    return torch.log2(torch.tensor(start_value)).item()
 
-def get_zoom_grid(args):
+def get_grid(args:dict, endpoint:bool=False):
+    """Generate a grid for the log-polar mapping
+    """
+
+    rs_ = torch.logspace(args.rs_min, args.rs_max, args.image_size, base=2) # Radial distances (log scale)
+    if endpoint: ## If endpoint is True, include the last point in the range
+        ts_ = torch.linspace(0, torch.pi*2, args.image_size) # Angular positions (full circle)
+    else:
+        ts_ = torch.linspace(0, torch.pi*2, args.image_size+1)[:-1] 
+    grid_xs = torch.outer(rs_, torch.cos(ts_)) # X-coordinates
+    grid_ys = torch.outer(rs_, torch.sin(ts_)) # Y-coordinates	
+    
+    return to_dev(args, torch.stack((grid_xs, grid_ys), 2)) # (H_scaled, W_scaled, 2)
+
+def get_zoom_grid(args:dict):
+    """
+    Generate grids for `nnf.grid_sample` where each ratio is a different zoom level.
+
+    Args:
+        rs_max (float): Maximum radius for the log-polar grid.
+        ratio (float): Ratio for the zoom level.
+        image_size (int): Size of the image (height and width).
+
+    Returns:
+        torch.Tensor: A tensor of shape [n_fixation_points, C, W, H], 
+        where each fixation point is a zoomed version of the image.
+        
+    """
     grids = []
-    for ratio in np.arange(args.size_ratio, (10 + args.size_ratio), 0.1):
-        if args.do_polar:
-            start = get_start(ratio)
+    for ratio in np.arange(args.size_ratio, (10 + args.size_ratio), 0.1): 
+        if args.do_polar: ## Generate log-polar grid
+            start = get_start(ratio) # Get the start value for log2 based on the ratio
             rs_ = torch.logspace(start, args.rs_max, args.image_size, base = 2)
             ts_ = torch.linspace(0, torch.pi*2, args.image_size+1)[:-1]  
         
             grid_x = torch.outer(rs_, torch.cos(ts_)) 
             grid_y = torch.outer(rs_, torch.sin(ts_)) 
             
-        else:
-            x = torch.linspace(-ratio, ratio, args.image_size)
-            y = torch.linspace(-ratio, ratio, args.image_size)
+        else: ## Generate Cartesian grid
+            x = torch.linspace(-ratio, ratio, args.image_size) # X-coordinates based on the ratio
+            y = torch.linspace(-ratio, ratio, args.image_size) # Y-coordinates based on the ratio
             grid_y, grid_x = torch.meshgrid(x, y, indexing='ij')
 
         
@@ -398,7 +425,7 @@ def get_zoom_grid(args):
         
     return torch.stack(grids)
 
-def generate_translate_roll_grids(args):
+def generate_translate_roll_grids(args:dict):
     """
     Generate grids for `nnf.grid_sample` where each fixation point rolls the image
     without losing information, mimicking `np.roll` behavior.
@@ -454,10 +481,20 @@ def generate_translate_roll_grids(args):
     return torch.stack(roll_grid, dim=0)
 
 
-def get_start(start_value):
-    return torch.log2(torch.tensor(start_value)).item()
-
-def get_saccade_map(args):
+def get_saccade_map(args:dict):
+    """
+    Generate grids for `nnf.grid_sample` where each fixation point is a different saccade.
+    it differs from the translation grid in that it crops the image at the same time.
+    
+    Args:
+        size_ratio (float): Ratio for the zoom level.
+        rs_max (float): Maximum radius for the log-polar grid.
+        image_size (int): Size of the image (height and width).
+        method (str): Method for sampling ('valid' stays in the borders or 'full' spills over the edges).
+        resolution (tuple): Resolution of the grid (number of fixation points along each axis).
+        do_polar (bool): Whether to use polar coordinates or Cartesian coordinates.
+    returns:
+        torch.Tensor: A tensor of shape [n_fixation_points, C, W, H],"""
     grids = []
     if args.do_polar:
         start = get_start(args.size_ratio)
@@ -484,10 +521,24 @@ def get_saccade_map(args):
     return torch.stack(grids)
 
 def round_up(num, denum):
+    """Round up the number to the nearest upper integer that is a
+    multiple of denum."""
     return num//denum + num%denum
 
 
-def multi_sacade_map(args):
+def multi_sacade_map(args:dict):
+    """Generate grids for `nnf.grid_sample` where each fixation point is a different saccade.
+    it differs from the saccade map grid in that it uses a different ratio for each fixation point
+    Args:
+        all_ratios (list): List of ratios for the multiple saccade map.
+        rs_max (float): Maximum radius for the log-polar grid.
+        image_size (int): Size of the image (height and width).
+        method (str): Method for sampling ('valid' stays in the borders or 'full' spills over the edges).
+        resolution (tuple): Resolution of the grid (number of fixation points along each axis).
+        do_polar (bool): Whether to use polar coordinates or Cartesian coordinates.
+    returns:
+        torch.Tensor: A tensor of shape [n_fixation_points, C, W, H],
+    """
     all_ratios = np.linspace(1, args.size_ratio, round_up(args.resolution[0],2))
     grids_saccades = []
     for num, i in enumerate(np.linspace(1, args.resolution[0], round_up(args.resolution[0],2), dtype=int)):
@@ -504,7 +555,8 @@ def multi_sacade_map(args):
     return grids_saccades[i+1].reshape(args.resolution[0] * args.resolution[1],
                                                                 args.image_size, args.image_size, 2)
 
-def apply_grid(image, grid): 
+def apply_grid(image:torch.tensor, grid:torch.tensor):
+    """Apply a grid to an image using grid_sample."""
     image = image.repeat(grid.shape[0],1,1,1)
     return nnf.grid_sample(image, grid, 
                             padding_mode=padding_mode, align_corners=False).squeeze(dim=0)
@@ -526,7 +578,10 @@ class transform_apply_grid(object):
                                 padding_mode="zeros", align_corners=False).squeeze(dim=0)
 
     
-def make_mask(image_size, radius = 0.5):
+def make_mask(image_size:int, radius:float = 0.5):
+    """Create a circular mask for the image.
+    image_size: int, size of the image (height and width)
+    radius: float, radius of the circle (0.5 means half the image size)"""
     X, Y = np.meshgrid(np.linspace(-radius, radius, image_size, endpoint=True), 
                np.linspace(-radius, radius, image_size, endpoint=True))
     R = np.sqrt(X**2 + Y**2)
@@ -534,6 +589,7 @@ def make_mask(image_size, radius = 0.5):
     return torch.from_numpy(mask)
 
 class ApplyMask: 
+    """Apply a mask to the image."""
     def __init__(self, mask):
         self.mask = mask
 
@@ -541,6 +597,8 @@ class ApplyMask:
         return images[:, :, ::] * self.mask
 
 class CleanRotations_class(object): 
+    """Apply a rotation to the image.
+    Clean because apply a circular mask to the image so the border does not reveal the rotation."""
     def __init__(self, angles):
         self.angles = angles
 
@@ -561,55 +619,53 @@ def CleanRotations_function(image, mask, angles=[0]):
     
 
 # Resnet datasets initialisation
-def get_transforms(args, im_mean=im_mean, im_std=im_std):
+def get_transforms(args:dict, im_mean:np.array=im_mean, im_std:np.array=im_std):
+    """Get the transforms for the image data set."""
     
     transforms = [                
         T.ToImage(),  # Convert to tensor, only needed if you had a PIL image
         T.ToDtype(torch.float32, scale=True),  # Normalize expects float input
     ]   
 
-    if args.do_rot_train: # used for augmentation and testing rotations
-        transforms.append(T.RandomRotation(degrees=(min(args.angles), max(args.angles)), interpolation=interpolation, expand=False))
-
-    if args.do_rotation and not args.do_saccade:
+    if args.do_rotation and not args.do_saccade: # apply rotation to the image
         args.batch_size_val, args.batch_size = 1, 1
         grid = get_grid(args).repeat(len(args.angles), 1, 1, 1)
         transforms.append(CleanRotations_class(args.angles))
 
-    if args.do_zoom and not (args.do_saccade or args.do_translate):
+    if args.do_zoom and not (args.do_saccade or args.do_translate): # apply zoom to the image
         args.batch_size_val, args.batch_size = 1, 1
         grid_zoom = to_dev(args, get_zoom_grid(args))
         transforms.append(transform_apply_grid(grid_zoom, 'multiple'))
         
-        if not args.do_polar:
+        if not args.do_polar: # if we are not using polar coordinates, we need to apply a mask to the image
             mask = to_dev(args, make_mask(args.image_size))
             transforms.append(ApplyMask(mask))
 
-    if args.do_translate and not (args.do_saccade or args.do_zoom):
+    if args.do_translate and not (args.do_saccade or args.do_zoom): # apply translation to the image
         args.batch_size_val, args.batch_size = 1, 1
         grid_translate = to_dev(args, generate_translate_roll_grids(args))
         transforms.append(transform_apply_grid(grid_translate, 'multiple'))
      
 
-    if args.do_polar and not (args.do_saccade or args.do_zoom or args.do_translate):
+    if args.do_polar and not (args.do_saccade or args.do_zoom or args.do_translate): # apply log-polar mapping to the image
         grid_polar = get_grid(args) if not args.do_rotation else get_grid(args).repeat(len(args.angles), 1, 1, 1)
         transforms.append(transform_apply_grid(grid_polar, ('base' if not args.do_rotation else None)))
 
-    if args.do_resize and not (args.do_polar or args.do_saccade or args.do_zoom):
+    if args.do_resize and not (args.do_polar or args.do_saccade or args.do_zoom): # resize the image to args.image_size
         transforms.append(T.Resize(int(args.image_size), interpolation=interpolation, antialias=True))
         transforms.append(T.CenterCrop((int(args.image_size), int(args.image_size))))
         
     
-    if args.do_mask and not (args.do_polar or args.do_saccade or args.do_zoom):
+    if args.do_mask and not (args.do_polar or args.do_saccade or args.do_zoom): # apply a circular mask to the image
         mask = to_dev(args, make_mask(args.image_size))
         transforms.append(ApplyMask(mask))
 
-    if args.do_saccade :
+    if args.do_saccade : # apply saccade to the image
         args.batch_size_val = 1
         grid = to_dev(args, multi_sacade_map(args)) if args.saccade_type == 'multi' else to_dev(args, get_saccade_map(args)) 
         transforms.append(transform_apply_grid(grid, 'multiple'))
 
-        if not args.do_polar and not args.do_raw:
+        if not args.do_polar and not args.do_raw: # if we are not using polar coordinates, we need to apply a mask to the image
             mask = to_dev(args, make_mask(args.image_size))
             transforms.append(ApplyMask(mask))
 
@@ -620,7 +676,7 @@ def get_transforms(args, im_mean=im_mean, im_std=im_std):
 
 from torchvision.datasets import ImageFolder
 
-def is_valid_file(path):
+def is_valid_file(path:str):
     """
     Filter out files starting with '._'
     
@@ -640,7 +696,12 @@ def is_valid_file(path):
     return True
 
 
-def image_datasets_transforms(args, im_mean=im_mean, im_std=im_std, verbose=True):
+def image_datasets_transforms(args:dict, im_mean:np.array=im_mean, im_std:np.array=im_std, verbose:bool=True):
+    """
+    Load the image data set and apply the transforms to it.
+    return a dictionary with the folder name as key and the data set as value.
+    The data set is a pytorch ImageFolder object.
+    """
 
     image_datasets  = {}
     for folder in args.folders:
@@ -656,19 +717,16 @@ def image_datasets_transforms(args, im_mean=im_mean, im_std=im_std, verbose=True
         if verbose: 
             print(f"Loaded {len(image_datasets[folder])} images under {folder}")  
 
-    return image_datasets # bug ? on renvoie que le dernier dataset de args.folder
+    return image_datasets
 
 
-def datasets_transforms(args, im_mean=im_mean, im_std=im_std,
-                        num_workers=num_workers, pin_memory=True, shuffle=True, verbose=True):
+def datasets_transforms(args:dict, im_mean:np.array=im_mean, im_std:np.array=im_std,
+                        num_workers:int=num_workers, pin_memory:bool=True, shuffle:bool=True, verbose:bool=True):
     """
-    
-    quel rapport avec image_datasets_transforms ?
-
-    
-    TODO: obsolete = "if angle is not none, applies a random rotation"
+    Load the image data set and apply the transforms to it.
+    return a dictionary with the folder name as key and the data set as value.
+    The data set is a pytorch DataLoader object.
     """
-
 
     image_datasets  = image_datasets_transforms(args, im_mean=im_mean, im_std=im_std, verbose=verbose)
 
@@ -680,9 +738,6 @@ def datasets_transforms(args, im_mean=im_mean, im_std=im_std,
                                 batch_size=args.batch_size if folder=='train' else args.batch_size_val,
                                 shuffle=shuffle, num_workers=num_workers, pin_memory=pin_memory
                         )
-        # if verbose: 
-        #     print(f"Loaded {len(image_datasets)} images under {folder}")  
-
     return dataloaders
 
 
@@ -690,6 +745,8 @@ def datasets_transforms(args, im_mean=im_mean, im_std=im_std,
 
 #############################################################
 def make_padding_circular_again(model_retrain):
+    """Make the padding circular for the model.
+    This is needed for the retraining of the model in log-polar coordinates."""
     for child in list(model_retrain.children()):
         if isinstance(child, (nn.Conv2d)):
             child.padding_mode = 'circular'
@@ -705,7 +762,7 @@ def make_padding_circular_again(model_retrain):
 
     return model_retrain
 
-def train_model(args, model, dataloaders, each_steps=64, verbose=True):
+def train_model(args:dict, model, dataloaders, each_steps=64, verbose=True):
     
     # retraining the full model
     for param in model.parameters():
@@ -820,18 +877,28 @@ def load_model(model_name='resnet50', model_path=None, do_scratch=False, do_circ
 #############################################################
 
 
-def clean_resize(args, image):
+def clean_resize(args:dict, image:torch.tensor):
+    """Resize the image to the image size and center crop it."""
     image = T.Resize(args.image_size, interpolation=interpolation, antialias=True)(image)
     return T.CenterCrop((int(args.image_size), int(args.image_size)))(image)
            
 
-def get_batch(args, model, full_image, size=100):
+def get_batch(args:dict, model, full_batch:torch.tensor, size:int=100):
+    """Get a light batch of images from the bigger batch 
+    and apply the model to it.
+    Args:      
+        args: dict, arguments for the model
+        model: torch model, the model to apply to the image
+        full_batch: torch tensor, the full batch of images
+        size: int, size of the batch to apply the model to
+    Returns:        
+        proba_label: torch tensor, the output of the model allong the full batch"""
     N_fixations = args.resolution[0] * args.resolution[1]
     proba_label = torch.zeros((N_fixations, 1000))
     for idx_start in np.arange(0, N_fixations, size):
         idx_stop = np.min((idx_start+size, N_fixations))
         with torch.no_grad():
-            outputs = torch.nn.functional.softmax(model(full_image[idx_start:idx_stop]), dim=1)
+            outputs = torch.nn.functional.softmax(model(full_batch[idx_start:idx_stop]), dim=1)
         proba_label[idx_start:idx_stop, :] = outputs#.detach().cpu().numpy()
     return proba_label
 
@@ -859,11 +926,13 @@ def get_positions(args, image):
 #############################################################
 
 def to_tuple(str_size):
+    """Convert a string size to a tuple of integers."""
     return (int(str_size.split(' ')[0].split('(')[1].split(',')[0]),
             int(str_size.split(' ')[1].split(')')[0]))
 
-def get_boxes_imagenet(box_anot): # function to get a list of dict for each box
-    
+def get_boxes_imagenet(box_anot:list): # function to get a list of dict for each box
+    """Get the boxes from the annotation file
+    from a list of strings to a list of dict with the coordinates of the boxes."""
     box = []
     for i in np.arange(len(box_anot)//5) :  # iterate for each box
         box.append({'ymin' : int(box_anot[(i*5)+1]),
@@ -872,7 +941,10 @@ def get_boxes_imagenet(box_anot): # function to get a list of dict for each box
                      'xmax' : int(box_anot[(i*5)+4])})
     return box
 
-def get_mask_from_bb(target_size, orig_size, boxes):
+def get_mask_from_bb(target_size:tuple, orig_size:tuple, boxes:list): # function to get the mask from the boxes
+    """Get the mask from the boxes
+    from a list of dict with the coordinates of the boxes
+    to a mask highlighting the boxes."""
     
     mask = np.zeros((orig_size),dtype=np.uint8) # initialize mask
     for box in boxes : 
@@ -880,12 +952,15 @@ def get_mask_from_bb(target_size, orig_size, boxes):
     return cv2.resize(mask, (target_size[1], target_size[0]), interpolation=cv2.INTER_LINEAR).T
 
 def store_pandas(df, df_):
+    """Store the pandas dataframe row to the complete dataframe."""
     if df is None:
         return df_
     else:
         return(pd.concat([df, df_], ignore_index=True))
 
-def normalize_array(arr):
+def normalize_array(arr:np.array):
+    """Normalize a NumPy array to the range [0, 1].
+    This function handles empty arrays and avoids division by zero. """
     # Ensure input is a NumPy array and check if it's non-empty
     if arr.size == 0:
         return arr  # Return the empty array as is
@@ -908,20 +983,34 @@ def normalize_array(arr):
     return normalized_arr
 
 
-def little_box(boxe, origin_size, resolution):
+def little_box(boxe:dict, origin_size:tuple, resolution:tuple):
+    """Get the coordinates of the center of the boxe in the image.
+    if the boxe is too small, return the coordinates of the center of the image."""
     x_mid = (boxe['xmax'] - boxe['xmin']) + boxe['xmin']
     y_mid = (boxe['ymax'] - boxe['ymin']) + boxe['ymin']
     return (int(np.round((x_mid*resolution[0])/origin_size[0])-1), int(np.round((y_mid*resolution[1])/origin_size[1]))-1)
     
 
-def no_axis_title(ax, title):
+def no_axis_title(ax:matplotlib.axes.Axes, title:str):
+    """Remove the axis and title from the plot."""
     ax.set_xticks([])
     ax.set_yticks([])
     ax.set_title(f'{title}')
     return 
 
 
-def get_ground_true(args, image_name, annotations, mode):
+def get_ground_true(args:dict, image_name:str, annotations:dict, mode:str):
+    """Get the ground truth for the image.
+    Args:
+        image_name (str): Name of the image.
+        annotations (dict): Annotations for the data set.
+        mode (str): Select the dataset ('Imagenet' or 'Animal10k').
+    Returns:       
+        ground_true_indices (np.array): Indices of the ground truth.
+        ground_true (np.array): Ground truth mask.
+        origin_size (tuple): Original size of the image.
+    """
+    # Get the ground truth for the image
     
     if mode == 'Imagenet':
         box_anot = annotations[annotations['ImageId'] == image_name]['PredictionString'].item().split(' ')
@@ -948,14 +1037,22 @@ def get_ground_true(args, image_name, annotations, mode):
             
     ground_true_indices = np.where(ground_true.reshape(args.resolution[0]*args.resolution[1]) > 0)
     
-    return ground_true_indices, three_points, ground_true, origin_size
+    return ground_true_indices, ground_true, origin_size
 
-def th_delete(tensor, indices):
+def th_delete(tensor:torch.tensor, indices:list):
+    """Delete the indices from the tensor."""
     mask = torch.ones(tensor.numel(), dtype=torch.bool)
     mask[indices] = False
     return tensor[mask]
 
 def get_IoU(heatmap, ground_true):
+    """Calculate the Intersection over Union (IoU) between the heatmap and ground truth.
+    Args:   
+        heatmap (np.array): Heatmap generated by the model.
+        ground_true (np.array): Ground truth mask.
+    Returns:    
+        IoU (list): List of IoU values for different thresholds.
+    """
     IoU = []
     # Convert to numpy if using PyTorch tensors
     heatmap = heatmap.numpy() if isinstance(heatmap, torch.Tensor) else heatmap
@@ -987,7 +1084,14 @@ def get_IoU(heatmap, ground_true):
     
     return IoU
 
-def read_IoU(results_Iou):
+def read_IoU(results_Iou:list):
+    """Read the IoU results and calculate the mean IoU for each threshold.
+    Args:
+        results_Iou (list): List of IoU results for each image.
+    Returns:
+        mean_Iou (dict): Dictionary with the mean IoU for each threshold.
+        list_Iou (list): List of mean IoU values for each threshold.
+    """
     none_iou = 0
     mean_Iou = {}
     for tresh, i in enumerate(results_Iou[0]):
@@ -1008,14 +1112,28 @@ def read_IoU(results_Iou):
 
 from sklearn.metrics import accuracy_score, precision_score, f1_score
     
-def get_best_Iou(result_Iou, best_loc):
+def get_best_Iou(result_Iou:list, best_loc:int=0):  
+    """Get the best IoU for each image.
+    Args:
+        result_Iou (list): List of IoU results for each image.
+        best_loc (int): Index of the best IoU to return.
+    Returns:    
+        best_Iou (list): List of best IoU values for each image.
+    """
     best_Iou = []
     for Iou in result_Iou:
         best_Iou.append(float(Iou[best_loc]))
     return best_Iou
 
 
-def to_save(fig, name, exts=['pdf', 'png'], folder='figs'):
+def to_save(fig:matplotlib.figure.Figure, name:str, exts:list=['pdf', 'png'], folder:str='figs'):
+    """Save the figure in the specified formats.
+    Args:   
+        fig (matplotlib.figure.Figure): Figure to save.
+        name (str): Name of the file to save.
+        exts (list): List of extensions to save the figure in.
+        folder (str): Folder to save the figure in.
+    """
     for ext in exts:
         fig.savefig(f'{folder}/{name}.{ext}',  **opts_savefig)
 
@@ -1038,7 +1156,9 @@ def make_mp4(mp4name, fnames, fps, codec='mpeg4', do_delete=True):
     return mp4name
 
 
-def get_top_indices(tensor, k=5):
+def get_top_indices(tensor:torch.tensor, k:int=5):
+    """
+    Get the indices of the top k values in a tensor."""
 
     try : 
         return torch.topk(tensor, k=k)[1]
@@ -1065,14 +1185,31 @@ def euclidean_distance(point_1, point_2):
     return math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
 
 
-def twoD_Gaussian(x, y, xo, yo, sigma_x, sigma_y): #2D Gaussian function
+def twoD_Gaussian(x:np.array, y:np.array, xo:float, yo:float, sigma_x:float, sigma_y:float): #2D Gaussian function
+    """2D Gaussian function.
+    Args:   
+        x (np.array): x-coordinates.
+        y (np.array): y-coordinates.
+        xo (float): x-coordinate of the center.
+        yo (float): y-coordinate of the center.
+        sigma_x (float): Standard deviation in the x direction.
+        sigma_y (float): Standard deviation in the y direction.
+    Returns:
+        np.array: 2D Gaussian function values.
+    """
     a = 1./(2*sigma_x**2) + 1./(2*sigma_y**2)
     c = 1./(2*sigma_x**2) + 1./(2*sigma_y**2)
     g = np.exp( - (a*((x-xo)**2) + c*((y-yo)**2)))
     return g.ravel()
 
 
-def to_heatmap(key_points, shape):  # a function use to apply 2d gaussian at designeted position (keypoints) on a image
+def to_heatmap(key_points:list, shape:tuple):  # a function use to apply 2d gaussian at designeted position (keypoints) on a image
+    """Create a 2D Gaussian heatmap based on key points.
+    Args:   
+        key_points (list): List of key points (x, y) to place the Gaussian peaks.
+        shape (tuple): Shape of the output heatmap (height, width).
+    Returns:
+        np.array: 2D Gaussian heatmap."""
     y, x = np.mgrid[0:shape[0], 0:shape[1]] # get x and y extents
     Gauss = np.zeros([shape[0]*shape[1]])
     for i in key_points:
@@ -1081,7 +1218,15 @@ def to_heatmap(key_points, shape):  # a function use to apply 2d gaussian at des
     return Gauss
 
 
-def collect_centered_map(args, map, position_prior):
+def collect_centered_map(args:dict, map:torch.tensor, position_prior:tuple):
+    """Collect the centered map from the original map,
+    rolling it to the position of interest.
+    Args:
+        args (dict): Arguments for the model.
+        map (torch.tensor): Original map to be centered.
+        position_prior (tuple): Position of the center of the map.  
+    Returns:
+        torch.tensor: Centered map."""
     diff_x, diff_y =  (args.resolution[0]//2)-position_prior[0] , (args.resolution[1]//2)-position_prior[1]
     map = torch.roll(map, [diff_x, diff_y], dims=[0, 1])
     #print(map)
@@ -1096,7 +1241,14 @@ def collect_centered_map(args, map, position_prior):
     return(map)
 
 import seaborn as sns
-def display_heat(image, likelihood_map, resolution, model_name, ax):
+def display_heat(image:np.array, likelihood_map:torch.tensor, resolution:tuple, ax:matplotlib.axes.Axes):
+    """Display the heatmap on top of the image.
+    Args:
+        image (np.array): Image to display.
+        likelihood_map (torch.tensor): Heatmap to display.
+        resolution (tuple): Resolution of the heatmap.
+        ax (matplotlib.axes.Axes): Axes to display the image on.
+    """
     shape_im = image.shape[:2]
     likelihood_map = np.array(likelihood_map).reshape(resolution)
     likelihood_map = cv2.resize(np.array(likelihood_map), (shape_im[1],shape_im[0]), interpolation=cv2.INTER_NEAREST)
@@ -1107,7 +1259,16 @@ def display_heat(image, likelihood_map, resolution, model_name, ax):
     ax.set_yticks([])
     plt.tight_layout()
 
-def display_heat_two(image, likelihood_maps, match, resolution, title_doc, save=False):
+def display_heat_two(image:np.array, likelihood_maps:torch.tensor, match:list, resolution:tuple, title_doc:str, save:bool=False):
+    """Display the heatmap on top of the image.
+        Args:
+        image (np.array): Image to display.
+        likelihood_map (torch.tensor): Heatmap to display.
+        resolution (tuple): Resolution of the heatmap.
+        ax (matplotlib.axes.Axes): Axes to display the image on.
+        save (bool): Save the figure or not.
+        title_doc (str): Name of the file to save.
+    """ 
     fig, axs = plt.subplots(1, len(likelihood_maps), figsize=(10, 10))
     for likelihood_map, ax in zip(likelihood_maps, axs):
         shape_im = image.shape[:2]
