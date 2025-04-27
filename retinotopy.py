@@ -18,7 +18,6 @@ datetag = strftime("%Y-%m-%d", gmtime())
 # datetag = '2025-01-05'
 datetag = '2025-03-06' # Jean Zay
 
-import cv2
 #############################################################
 
 #############################################################
@@ -945,7 +944,7 @@ def get_mask_from_bb(target_size:tuple, orig_size:tuple, boxes:list): # function
     """Get the mask from the boxes
     from a list of dict with the coordinates of the boxes
     to a mask highlighting the boxes."""
-    
+    import cv2    
     mask = np.zeros((orig_size),dtype=np.uint8) # initialize mask
     for box in boxes : 
         mask[box['ymin']:box['ymax'],box['xmin']:box['xmax']] = 1 # fill with white pixels
@@ -1019,6 +1018,8 @@ def get_ground_true(args:dict, image_name:str, annotations:dict, mode:str):
         ground_true = np.round(get_mask_from_bb(args.resolution, origin_size, boxes))
     
     else: #Get ground true for Animal 10k
+        import cv2
+
         boxes = annotations[image_name]['keypoints']
         origin_size = [annotations[image_name]['image_info']['height'], annotations[image_name]['image_info']['width']]
         brut_array = to_heatmap(boxes, origin_size)
@@ -1249,6 +1250,8 @@ def display_heat(image:np.array, likelihood_map:torch.tensor, resolution:tuple, 
         resolution (tuple): Resolution of the heatmap.
         ax (matplotlib.axes.Axes): Axes to display the image on.
     """
+    import cv2
+
     shape_im = image.shape[:2]
     likelihood_map = np.array(likelihood_map).reshape(resolution)
     likelihood_map = cv2.resize(np.array(likelihood_map), (shape_im[1],shape_im[0]), interpolation=cv2.INTER_NEAREST)
@@ -1269,6 +1272,8 @@ def display_heat_two(image:np.array, likelihood_maps:torch.tensor, match:list, r
         save (bool): Save the figure or not.
         title_doc (str): Name of the file to save.
     """ 
+    import cv2
+
     fig, axs = plt.subplots(1, len(likelihood_maps), figsize=(10, 10))
     for likelihood_map, ax in zip(likelihood_maps, axs):
         shape_im = image.shape[:2]
