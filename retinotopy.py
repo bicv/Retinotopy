@@ -1137,24 +1137,24 @@ def to_save(fig:matplotlib.figure.Figure, name:str, exts:list=['pdf', 'png'], fo
     for ext in exts:
         fig.savefig(f'{folder}/{name}.{ext}',  **opts_savefig)
 
-# https://moviepy.readthedocs.io/en/latest/getting_started/videoclips.html#imagesequenceclip
-# def make_mp4(mp4name, fnames, fps, do_delete=True):
-#     from moviepy.video.io.ImageSequenceClip import ImageSequenceClip
-#     clip = ImageSequenceClip(fnames, fps=fps)
-#     clip.write_videofile(mp4name, fps=fps, codec='libx264', verbose=False, logger=None)
-#     if do_delete: 
-#         for fname in fnames: os.remove(fname)
-#     return mp4name
+# %pip install imageio[ffmpeg]
 
-def make_mp4(mp4name, fnames, fps, codec='mpeg4', do_delete=True):
-    from moviepy.video.io.ImageSequenceClip import ImageSequenceClip
-    # from moviepy import ImageSequenceClip
-    clip = ImageSequenceClip(fnames, fps=fps)
-    clip.write_videofile(mp4name, codec=codec, fps=fps, logger=None)
+import imageio
+def make_mp4(moviename, fnames, fps, codec='mpeg4', do_delete=True):
+    # Create a video writer object
+    writer = imageio.get_writer(moviename, fps=fps)  # Adjust the fps as needed
+
+    # Write frames to the video
+    for fname in fnames:
+        img = imageio.imread(fname)
+        writer.append_data(img)
+
+    # Close the writer
+    writer.close()
+
     if do_delete: 
         for fname in fnames: os.remove(fname)
-    return mp4name
-
+    return moviename
 
 def get_top_indices(tensor:torch.tensor, k:int=5):
     """
