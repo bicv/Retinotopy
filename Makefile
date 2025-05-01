@@ -55,7 +55,7 @@ notebooks_learn:
 	ipython 14_optimise.ipynb	
 	
 notebooks_maps:
-	ipython 20_compute_likelihood_map.ipynb 21_multiple_likelihood_map.ipynb 22_scan_mean_nan.ipynb 25_stats_of_likelihood_map.ipynb 26_stats_likelihood_map_Animal10K.ipynb 28_grad_cam_complete_evaluation.ipynb
+	ipython 21_multiple_likelihood_map.ipynb 22_scan_mean_nan.ipynb 25_stats_of_likelihood_map.ipynb 26_stats_likelihood_map_Animal10K.ipynb 28_grad_cam_complete_evaluation.ipynb
 
 all:
 	# find -s . -name "*.ipynb" -exec ls -ltr {} \;
