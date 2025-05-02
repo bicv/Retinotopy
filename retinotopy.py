@@ -1034,7 +1034,7 @@ def get_ground_true(args:dict, image_name:str, annotations:dict, mode:str):
                 coord = (little_box(boxe, origin_size, args.resolution))
                 ground_true[coord[1],coord[0]] = 1
         except:
-                return None, None, np.ones(1), origin_size # return None for value we cant caculate and 1 to stop at the next condition
+                return None, np.ones(1), origin_size # return None for value we cant caculate and 1 to stop at the next condition
             
     ground_true_indices = np.where(ground_true.reshape(args.resolution[0]*args.resolution[1]) > 0)
     
