@@ -1,4 +1,5 @@
 #!/bin/sh
+# http://www.idris.fr/eng/jean-zay/modifications-extension-jean-zay-h100-eng.html
 #SBATCH -J Retino
 #SBATCH  -A fsx@h100
 #SBATCH  -C h100
