@@ -15,5 +15,5 @@
 
 module purge
 module load pytorch-gpu/py3
-
+ipython 22_scan_mean_nan.ipynb
 make
