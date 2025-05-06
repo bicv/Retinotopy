@@ -342,7 +342,7 @@ def get_annotation(type:str):
 im_mean = np.array([0.485, 0.456, 0.406])
 im_std = np.array([0.229, 0.224, 0.225]) 
 
-def imgs_to_np(img_list, im_mean=im_mean, im_std=im_std):
+def imgs_to_np(img_list, im_mean:np.array=im_mean, im_std:np.array=im_std):
     images = torchvision.utils.make_grid(img_list, nrow=11)
     """Imshow for Tensor."""
     inp = images.numpy().transpose((1, 2, 0))
@@ -350,7 +350,7 @@ def imgs_to_np(img_list, im_mean=im_mean, im_std=im_std):
     inp = np.clip(inp, 0, 1)
     return(inp)
 
-def imshow(img_list, im_mean:list=im_mean, im_std:list=im_std, 
+def imshow(img_list, im_mean:np.array=im_mean, im_std:np.array=im_std, 
            title:str=None, fig_height:int=7, fig=None, ax:matplotlib.axes.Axes=None, save:bool=False, name:str=None): #allow to display the input image
     if ax is None:
         fig, ax = plt.subplots(figsize=(fig_height*len(img_list), fig_height))
@@ -761,7 +761,7 @@ def make_padding_circular_again(model_retrain):
 
     return model_retrain
 
-def train_model(args:dict, model, dataloaders, each_steps=64, verbose=True):
+def train_model(args:dict, model, dataloaders:torch.utils.data.DataLoader, each_steps:int=64, verbose:bool=True):
     
     # retraining the full model
     for param in model.parameters():
@@ -838,7 +838,14 @@ def train_model(args:dict, model, dataloaders, each_steps=64, verbose=True):
     return model, df_train
 
 
-def apply_weights(model, model_path, verbose=True):
+def apply_weights(model, model_path:str, verbose=True):
+    """Apply the weights to the model.
+    Args:
+        model: torch model, the model to apply the weights to
+        model_path: str, path to the weights file
+        verbose: bool, whether to print the loading message or not
+    Returns:    
+        model: torch model, the model with the weights applied"""
     if verbose: print(f'loading .... {model_path}')
     # model.load_state_dict(torch.load(model_path), map_location=torch.device(device), weights_only=True)
     # model.load_state_dict(torch.load(model_path), weights_only=True)
@@ -847,7 +854,16 @@ def apply_weights(model, model_path, verbose=True):
     return model
 
 import torchvision.models as models
-def load_model(model_name='resnet50', model_path=None, do_scratch=False, do_circular=False, verbose=True):
+def load_model(model_name:str='resnet50', model_path:str=None, do_scratch:bool=False, do_circular:bool=False, verbose:bool=True):
+    """Load the model from the torchvision library.
+    Args:
+        model_name: str, name of the model to load (resnet18, resnet50, resnet101)
+        model_path: str, path to the weights file
+        do_scratch: bool, whether to start from a scratch model or not
+        do_circular: bool, whether to make the padding circular or not
+        verbose: bool, whether to print the loading message or not
+    Returns:
+        model: torch model, the model with the weights applied"""
     # get the architecture of the network
             
     if model_name=='resnet18':
