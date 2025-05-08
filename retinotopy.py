@@ -17,6 +17,7 @@ datetag = strftime("%Y-%m-%d", gmtime())
 #datetag = '2024-05-24'
 # datetag = '2025-01-05'
 datetag = '2025-03-06' # Jean Zay
+datetag = '2025-05-08' # Jean Zay
 
 #############################################################
 
@@ -137,15 +138,14 @@ os.makedirs(data_cache, exist_ok=True)
 interpolation = T.InterpolationMode.BILINEAR
 padding_mode = "border"
 
-batch_size = 250
+batch_size = 150
 
 USER = os.environ['USER']  # username
 
 if USER=='uvb28bo': # Jean Zay
     # DATAROOT = '../data'
     DATAROOT = f'{os.environ['SCRATCH']}/data'
-    num_workers = 8
-    batch_size = 256
+    num_workers = 16
     print(f'Running on Jean Zay with {torch.cuda.get_device_name()} with {DATAROOT=} and {USER=} ')
 elif '.cluster' in HOST: # mesocentre
     DATAROOT = '/scratch/lperrinet/science/Deep_learning/data'
@@ -154,7 +154,6 @@ elif 'm-gpu' in HOST:
     DATAROOT = 'data'
     # batch_size = 50
     num_workers = 2
-    batch_size = 512
 elif HOST in ['babbage']: # 
     DATAROOT = '/data/Deep_learning/data'
     num_workers = 2
@@ -228,14 +227,14 @@ class Params:
     tasks: list = field(default_factory=lambda: ['animal', 'dog', 'cat', 'bird']) # Set the semantic link to perfome different tasks
     
     image_size: int = 224 # base resolution of the image (224, 224)
-    num_epochs: int = 10 # 
+    num_epochs: int = 20 # 
     n_train_stop: int = 0 # set to zero to use all images
     seed: int = 1998 # Set the seed for reproducibility 
     batch_size: int = batch_size # Set number of images per input batch
     batch_size_val: int = batch_size # Set number of images per input batch
-    lr: float = 5.e-5 # Set learning rate 
-    momentum: float = .02 # Set the momentum
-    beta2: float = 0 # Set the second momentum - use SGD if set to 0
+    lr: float = 1.e-6 # Set learning rate 
+    momentum: float = .12 # Set the momentum
+    beta2: float = 0.15 # Set the second momentum - use SGD if set to 0
     rs_min: float = 0.00 # Set minimum radius of the log-polar grid
     rs_max: float = -5.00 # Set maximum radius of the log-polar grid
     
