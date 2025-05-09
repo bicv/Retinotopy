@@ -17,7 +17,7 @@ datetag = strftime("%Y-%m-%d", gmtime())
 #datetag = '2024-05-24'
 # datetag = '2025-01-05'
 datetag = '2025-03-06' # Jean Zay
-datetag = '2025-05-08' # Jean Zay
+# datetag = '2025-05-08' # Jean Zay
 
 #############################################################
 
