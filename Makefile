@@ -1,5 +1,5 @@
 DIR=Retinotopy
-default:notebooks_learn
+default:notebooks_intro notebooks_learn
 #################@#################@#################@#################
 # 
 MESO_URL=lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science/
@@ -43,15 +43,20 @@ J=jupyter nbconvert --ExecutePreprocessor.kernel_name=python3 --ExecutePreproces
 JN=$(J) --to notebook --inplace # for the final touch
 
 notebooks_intro:
+	# ipython 00_installation.ipynb                 
+	ipython 01_retinotopic-mapping.ipynb         
+	ipython 04_display_dataset_ground_truth.ipynb 
+	ipython 05_imagenet_boxes_dataset.ipynb       
+	ipython 08_dataloaders.ipynb                  
 	$(JN) 09_benchmark-dataloader.ipynb
 	# find -s . -name "0*.ipynb" -exec $(JN) {} \;
 
 notebooks_learn:
-	# ipython 10_transfer_learning.ipynb 
-	ipython 14_optimise.ipynb	
-	# ipython 16_rotation_attack.ipynb
-	# ipython 17_zoom_attack.ipynb
-	# ipython 18_translation_attack.ipynb
+	ipython 10_transfer_learning.ipynb 
+	# ipython 14_optimise.ipynb	
+	ipython 16_rotation_attack.ipynb
+	ipython 17_zoom_attack.ipynb
+	ipython 18_translation_attack.ipynb
 	
 notebooks_maps:
 	ipython 21_multiple_likelihood_map.ipynb 22_scan_mean_nan.ipynb 25_stats_of_likelihood_map.ipynb 26_stats_likelihood_map_Animal10K.ipynb 28_grad_cam_complete_evaluation.ipynb
