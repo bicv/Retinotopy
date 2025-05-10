@@ -14,7 +14,7 @@
 #SBATCH -e cached_data/log_%j_err.log  # <-- the name of the file where errors of the simulation are written
 
 module purge
-make module load arch/h100
+module load arch/h100
 module load pytorch-gpu/py3
 
 make
