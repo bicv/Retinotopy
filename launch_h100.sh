@@ -9,7 +9,7 @@
 #SBATCH --cpus-per-task=24
 #SBATCH --gres=gpu:1
 #SBATCH --hint=nomultithread
-#SBATCH -t 19:59:59
+#SBATCH -t 19:59:00
 #SBATCH -o cached_data/log_%j_out.log  # <-- the name of the file where the output of the simulation is written
 #SBATCH -e cached_data/log_%j_err.log  # <-- the name of the file where errors of the simulation are written
 

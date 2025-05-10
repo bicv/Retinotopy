@@ -1,5 +1,5 @@
 DIR=Retinotopy
-default:notebooks_intro notebooks_learn
+default:notebooks_learn
 #################@#################@#################@#################
 # 
 MESO_URL=lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science/
@@ -27,6 +27,15 @@ pull_jeanzay:
 
 push_jeanzay:
 	rsync $(SSH_OPTS) cached_data $(JEANZAY_URL)/$(DIR) 
+
+
+data_pull_jeanzay:
+	rsync -av --delete --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" uvb28bo@jean-zay3.idris.fr:/lustre/fsn1/projects/rech/fsx/uvb28bo/data/Imagenet_full /envau/work/neopto/USERS/PERRINET/Deep_learning/data
+	rsync -av --delete --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa"  uvb28bo@jean-zay3.idris.fr:/lustre/fsn1/projects/rech/fsx/uvb28bo/data/animal_10k  /envau/work/neopto/USERS/PERRINET/Deep_learning/data
+
+data_push_jeanzay:
+	rsync -av -u --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" /envau/work/neopto/USERS/PERRINET/Deep_learning/data/Imagenet_full  uvb28bo@jean-zay3.idris.fr:/lustre/fsn1/projects/rech/fsx/uvb28bo/data
+	rsync -av -u --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" /envau/work/neopto/USERS/PERRINET/Deep_learning/data/animal_10k  uvb28bo@jean-zay3.idris.fr:/lustre/fsn1/projects/rech/fsx/uvb28bo/data
 
 rsync -av perrinet.l@niolon.intlocal.univ-amu.fr:/envau/work/neopto/USERS/PERRINET/Retinotopy/cached_data .
 

@@ -760,7 +760,7 @@ def make_padding_circular_again(model_retrain):
 
     return model_retrain
 
-def train_model(args:dict, model, dataloaders:torch.utils.data.DataLoader, each_steps:int=64, verbose:bool=True):
+def train_model(args:dict, model, dataloaders:torch.utils.data.DataLoader, each_steps:int=64, verbose:bool=True, model_filename=''):
     
     # retraining the full model
     for param in model.parameters():
@@ -831,7 +831,7 @@ def train_model(args:dict, model, dataloaders:torch.utils.data.DataLoader, each_
                     avg_acc_val = acc_val / n_val
 
                     df_train.loc[len(df_train)] = {'epoch': i_epoch, 'i_image':i_image, 'total_image':total_image, 'avg_loss':avg_loss, 'avg_acc':avg_acc, 'avg_loss_val':avg_loss_val, 'avg_acc_val':avg_acc_val, 'time':time.time() - since}
-                    if verbose:  print(f"Epoch {i_epoch}, i_image {i_image} : train= loss: {avg_loss:.4f} / acc : {avg_acc:.4f} - val= loss : {avg_loss_val:.4f} / acc : {avg_acc_val:.4f} / time:{time.time() - since:.1f}")
+                    if verbose:  print(f"{model_filename} - Epoch {i_epoch}, i_image {i_image} : train= loss: {avg_loss:.4f} / acc : {avg_acc:.4f} - val= loss : {avg_loss_val:.4f} / acc : {avg_acc_val:.4f} / time:{time.time() - since:.1f}")
 
     if torch.cuda.is_available(): torch.cuda.empty_cache()        
     return model, df_train
