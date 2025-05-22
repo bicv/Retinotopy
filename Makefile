@@ -1,5 +1,5 @@
 DIR=Retinotopy
-default:notebooks_learn
+default:notebooks_intro notebooks_learn
 #################@#################@#################@#################
 # 
 MESO_URL=lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science/
@@ -31,7 +31,7 @@ push_jeanzay:
 
 data_pull_envau_local:
 	rsync -av --delete --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" perrinet.l@niolon.intlocal.univ-amu.fr:/envau/work/neopto/USERS/PERRINET/Deep_learning/data/Imagenet_full data
-	rsync -av --delete --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" perrinet.l@niolon.intlocal.univ-amu.fr:/envau/work/neopto/USERS/PERRINET/Deep_learning/data/Imagenet_bbox data
+	# rsync -av --delete --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" perrinet.l@niolon.intlocal.univ-amu.fr:/envau/work/neopto/USERS/PERRINET/Deep_learning/data/Imagenet_bbox data
 	rsync -av --delete --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" perrinet.l@niolon.intlocal.univ-amu.fr:/envau/work/neopto/USERS/PERRINET/Deep_learning/data/animal_10k  data
 
 data_pull_jeanzay:
