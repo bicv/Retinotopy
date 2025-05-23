@@ -58,8 +58,8 @@ JN=$(J) --to notebook --inplace # for the final touch
 
 notebooks_intro:
 	# ipython 00_installation.ipynb                 
-	$(JN)  01_retinotopic-mapping.ipynb         
-	ipython 04_display_dataset_ground_truth.ipynb 
+	$(JN) 01_retinotopic-mapping.ipynb         
+	$(JN) 04_display_dataset_ground_truth.ipynb 
 	ipython 05_imagenet_boxes_dataset.ipynb       
 	ipython 08_dataloaders.ipynb                  
 	$(JN) 09_benchmark-dataloader.ipynb
