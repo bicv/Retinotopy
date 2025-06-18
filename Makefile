@@ -30,16 +30,17 @@ push_jeanzay:
 
 
 data_pull_envau_local:
-	rsync -av --delete --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" perrinet.l@niolon.intlocal.univ-amu.fr:/envau/work/neopto/USERS/PERRINET/Deep_learning/data/Imagenet_full /envau/work/neopto/USERS/PERRINET/Deep_learning/data
+	rsync -av --delete --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" perrinet.l@niolon.intlocal.univ-amu.fr:/envau/work/neopto/USERS/PERRINET/Deep_learning/data/Imagenet_full /data
 	rsync -av --delete --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" perrinet.l@niolon.intlocal.univ-amu.fr:/envau/work/neopto/USERS/PERRINET/Deep_learning/data/animal_10k  data
 
 data_pull_jeanzay:
-	rsync -av --delete --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" uvb28bo@jean-zay3.idris.fr:/lustre/fsn1/projects/rech/fsx/uvb28bo/data/Imagenet_full /envau/work/neopto/USERS/PERRINET/Deep_learning/data
+	rsync -av --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" uvb28bo@jean-zay3.idris.fr:/lustre/fsn1/projects/rech/fsx/uvb28bo/data/Imagenet_full /envau/work/neopto/USERS/PERRINET/Deep_learning/data
 	rsync -av --delete --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa"  uvb28bo@jean-zay3.idris.fr:/lustre/fsn1/projects/rech/fsx/uvb28bo/data/animal_10k  /envau/work/neopto/USERS/PERRINET/Deep_learning/data
 
+# to make from niolon
 data_push_jeanzay:
-	rsync -av -u --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" /envau/work/neopto/USERS/PERRINET/Deep_learning/data/Imagenet_full  uvb28bo@jean-zay3.idris.fr:/lustre/fsn1/projects/rech/fsx/uvb28bo/data
-	rsync -av -u --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" /envau/work/neopto/USERS/PERRINET/Deep_learning/data/animal_10k  uvb28bo@jean-zay3.idris.fr:/lustre/fsn1/projects/rech/fsx/uvb28bo/data
+	rsync -av --delete --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" /envau/work/neopto/USERS/PERRINET/Deep_learning/data/Imagenet_{full,bbox}  uvb28bo@jean-zay3.idris.fr:/lustre/fsn1/projects/rech/fsx/uvb28bo/data
+	rsync -av --delete --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" /envau/work/neopto/USERS/PERRINET/Deep_learning/data/animal_10k  uvb28bo@jean-zay3.idris.fr:/lustre/fsn1/projects/rech/fsx/uvb28bo/data
 
 rsync -av perrinet.l@niolon.intlocal.univ-amu.fr:/envau/work/neopto/USERS/PERRINET/Retinotopy/cached_data .
 
