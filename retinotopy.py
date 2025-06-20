@@ -18,6 +18,7 @@ datetag = strftime("%Y-%m-%d", gmtime())
 # datetag = '2025-01-05'
 datetag = '2025-03-06' # Jean Zay
 datetag = '2025-05-08' # Jean Zay
+datetag = '2025-06-20' # Jean Zay
 
 #############################################################
 
@@ -232,9 +233,9 @@ class Params:
     seed: int = 1998 # Set the seed for reproducibility 
     batch_size: int = batch_size # Set number of images per input batch
     batch_size_val: int = batch_size # Set number of images per input batch
-    lr: float = 1.e-6 # Set learning rate 
-    momentum: float = .12 # Set the momentum
-    beta2: float = 0.15 # Set the second momentum - use SGD if set to 0
+    lr: float = 5.e-5 # Set learning rate 
+    momentum: float = .02 # Set the momentum
+    beta2: float = 0 # Set the second momentum - use SGD if set to 0
     rs_min: float = 0.00 # Set minimum radius of the log-polar grid
     rs_max: float = -5.00 # Set maximum radius of the log-polar grid
     
