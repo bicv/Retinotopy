@@ -1,5 +1,5 @@
 DIR=Retinotopy
-default:notebooks_intro notebooks_learn
+default:notebooks_learn
 #################@#################@#################@#################
 # 
 MESO_URL=lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science/
@@ -30,19 +30,19 @@ push_jeanzay:
 
 
 data_pull_envau_local:
-	rsync -av --delete --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" perrinet.l@niolon.intlocal.univ-amu.fr:/envau/work/neopto/USERS/PERRINET/Deep_learning/data/Imagenet_full data
-	# rsync -av --delete --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" perrinet.l@niolon.intlocal.univ-amu.fr:/envau/work/neopto/USERS/PERRINET/Deep_learning/data/Imagenet_bbox data
+	rsync -av --delete --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" perrinet.l@niolon.intlocal.univ-amu.fr:/envau/work/neopto/USERS/PERRINET/Deep_learning/data/Imagenet_full /data
 	rsync -av --delete --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" perrinet.l@niolon.intlocal.univ-amu.fr:/envau/work/neopto/USERS/PERRINET/Deep_learning/data/animal_10k  data
 
 data_pull_jeanzay:
-	rsync -av --delete --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" uvb28bo@jean-zay3.idris.fr:/lustre/fsn1/projects/rech/fsx/uvb28bo/data/Imagenet_full /envau/work/neopto/USERS/PERRINET/Deep_learning/data
+	rsync -av --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" uvb28bo@jean-zay3.idris.fr:/lustre/fsn1/projects/rech/fsx/uvb28bo/data/Imagenet_full /envau/work/neopto/USERS/PERRINET/Deep_learning/data
 	rsync -av --delete --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa"  uvb28bo@jean-zay3.idris.fr:/lustre/fsn1/projects/rech/fsx/uvb28bo/data/animal_10k  /envau/work/neopto/USERS/PERRINET/Deep_learning/data
 
+# to make from niolon
 data_push_jeanzay:
-	rsync -av -u --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" /envau/work/neopto/USERS/PERRINET/Deep_learning/data/Imagenet_full  uvb28bo@jean-zay3.idris.fr:/lustre/fsn1/projects/rech/fsx/uvb28bo/data
-	rsync -av -u --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" /envau/work/neopto/USERS/PERRINET/Deep_learning/data/animal_10k  uvb28bo@jean-zay3.idris.fr:/lustre/fsn1/projects/rech/fsx/uvb28bo/data
+	rsync -av --delete --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" /envau/work/neopto/USERS/PERRINET/Deep_learning/data/Imagenet_{full,bbox}  uvb28bo@jean-zay3.idris.fr:/lustre/fsn1/projects/rech/fsx/uvb28bo/data
+	rsync -av --delete --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" /envau/work/neopto/USERS/PERRINET/Deep_learning/data/animal_10k  uvb28bo@jean-zay3.idris.fr:/lustre/fsn1/projects/rech/fsx/uvb28bo/data
 
-# rsync -av perrinet.l@niolon.intlocal.univ-amu.fr:/envau/work/neopto/USERS/PERRINET/Retinotopy/cached_data .
+rsync -av perrinet.l@niolon.intlocal.univ-amu.fr:/envau/work/neopto/USERS/PERRINET/Retinotopy/cached_data .
 
 DATADIR=data
 DATAPATH=/Volumes/SSD1TO/Deep_learning/data
@@ -58,8 +58,8 @@ JN=$(J) --to notebook --inplace # for the final touch
 
 notebooks_intro:
 	# ipython 00_installation.ipynb                 
-	$(JN) 01_retinotopic-mapping.ipynb         
-	$(JN) 04_display_dataset_ground_truth.ipynb 
+	# $(JN)  01_retinotopic-mapping.ipynb         
+	ipython 04_display_dataset_ground_truth.ipynb 
 	ipython 05_imagenet_boxes_dataset.ipynb       
 	ipython 08_dataloaders.ipynb                  
 	$(JN) 09_benchmark-dataloader.ipynb
@@ -67,7 +67,7 @@ notebooks_intro:
 
 notebooks_learn:
 	ipython 10_transfer_learning.ipynb 
-	# ipython 14_optimise.ipynb	
+	ipython 14_optimise.ipynb	
 	ipython 16_rotation_attack.ipynb
 	ipython 17_zoom_attack.ipynb
 	ipython 18_translation_attack.ipynb
