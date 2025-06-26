@@ -160,9 +160,9 @@ elif HOST in ['babbage']: #
     num_workers = 2
 elif HOST in ['CONECT-LID-01']: # emmy
     # DATAROOT = '/envau/userspace/perrinet.l/data'
-    DATAROOT = 'data'
-    batch_size = 50
-    num_workers = 16    
+    DATAROOT = '/scratch/data'
+    batch_size = 256
+    num_workers = 8    
 elif HOST in ['CONEC-LID-002']: # faraday
     # DATAROOT = '/envau/userspace/perrinet.l/data'
     DATAROOT = '/scratch/ImageNet'
