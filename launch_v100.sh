@@ -5,7 +5,7 @@
 #SBATCH --qos=qos_gpu-t4
 #SBATCH --nodes=4
 #SBATCH --ntasks-per-node=4
-#SBATCH --cpus-per-task=10
+#SBATCH --cpus-per-task=17
 #SBATCH --gres=gpu:1
 #SBATCH --hint=nomultithread
 #SBATCH -t 40:00:00 
