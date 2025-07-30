@@ -1,5 +1,5 @@
 DIR=Retinotopy
-default:notebooks_learn
+default:notebooks_intro notebooks_learn
 #################@#################@#################@#################
 # 
 MESO_URL=lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science/
@@ -59,9 +59,9 @@ JN=$(J) --to notebook --inplace # for the final touch
 notebooks_intro:
 	# ipython 00_installation.ipynb                 
 	# $(JN)  01_retinotopic-mapping.ipynb         
-	ipython 04_display_dataset_ground_truth.ipynb 
-	ipython 05_imagenet_boxes_dataset.ipynb       
-	ipython 08_dataloaders.ipynb                  
+	$(JN) 04_display_dataset_ground_truth.ipynb 
+	$(JN) 05_imagenet_boxes_dataset.ipynb       
+	# ipython 08_dataloaders.ipynb                  
 	$(JN) 09_benchmark-dataloader.ipynb
 	# find -s . -name "0*.ipynb" -exec $(JN) {} \;
 
