@@ -61,7 +61,7 @@ notebooks_intro:
 	# $(JN)  01_retinotopic-mapping.ipynb         
 	$(JN) 04_display_dataset_ground_truth.ipynb 
 	$(JN) 05_imagenet_boxes_dataset.ipynb       
-	$(JN) 08_dataloaders.ipynb                  
+# 	$(JN) 08_dataloaders.ipynb                  
 	$(JN) 09_benchmark-dataloader.ipynb
 	# find -s . -name "0*.ipynb" -exec $(JN) {} \;
 
