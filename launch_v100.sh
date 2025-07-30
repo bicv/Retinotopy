@@ -2,10 +2,12 @@
 #SBATCH -J Retino
 #SBATCH  -A fsx@v100
 #SBATCH  -C v100-32g
+## http://www.idris.fr/jean-zay/gpu/jean-zay-gpu-exec_mono_batch.html
+##SBATCH --partition=gpu_p2          # decommenter pour la partition gpu_p2 (GPU V100 32 Go)
 #SBATCH --qos=qos_gpu-t4
-#SBATCH --nodes=4
-#SBATCH --ntasks-per-node=4
-#SBATCH --cpus-per-task=17
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=8
 #SBATCH --gres=gpu:1
 #SBATCH --hint=nomultithread
 #SBATCH -t 40:00:00 

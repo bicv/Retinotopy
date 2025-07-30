@@ -146,7 +146,8 @@ USER = os.environ['USER']  # username
 if USER=='uvb28bo': # Jean Zay
     # DATAROOT = '../data'
     DATAROOT = f'{os.environ['SCRATCH']}/data'
-    num_workers = 16
+    # num_workers = 16 # on H100
+    num_workers = 8 # on V100
     print(f'Running on Jean Zay with {torch.cuda.get_device_name()} with {DATAROOT=} and {USER=} ')
 elif '.cluster' in HOST: # mesocentre
     DATAROOT = '/scratch/lperrinet/science/Deep_learning/data'
