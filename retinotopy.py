@@ -143,8 +143,9 @@ batch_size = 150
 
 USER = os.environ['USER']  # username
 
+# platform-dependent variables
 if USER=='uvb28bo': # Jean Zay
-    # DATAROOT = '../data'
+    # DATAROOT = f'{os.environ['WORK']}/DeepLearningDatasets' # TODO
     DATAROOT = f'{os.environ['SCRATCH']}/data'
     # num_workers = 16 # on H100
     num_workers = 8 # on V100
@@ -183,7 +184,7 @@ elif 'obiwan' in HOST:
     DATAROOT = '/Volumes/SSD1TO/ImageNet'
     DATAROOT = '/Volumes/SSD1TO/Deep_learning/ILSVRC2010_ImageNet'
     DATAROOT = 'data'
-    DATAROOT = '/Volumes/SSD1TO/Deep_learning/data'
+    DATAROOT = '/Volumes/SSD1TO/DeepLearningDatasets'
     interpolation = T.InterpolationMode.NEAREST
     padding_mode = "reflection"
     num_workers = 2
@@ -203,7 +204,6 @@ elif 'Newton' in HOST:
         DATAROOT = 'c:\\Users\\JnJer\\Nextcloud\\JNJER_PhD\\data'
     batch_size = 50
     num_workers = 4
-    
 else:
     raise ValueError(f'Unknown host {HOST=} / {USER=}')
 

@@ -1,5 +1,5 @@
 DIR=Retinotopy
-default:notebooks_intro notebooks_learn
+default:notebooks_learn
 #################@#################@#################@#################
 # 
 MESO_URL=lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science/
@@ -14,35 +14,34 @@ push_meso:
 
 # cd /envau/work/neopto/USERS/PERRINET/Retinotopy 
 ENVAU_URL=perrinet.l@niolon.intlocal.univ-amu.fr:/envau/work/neopto/USERS/PERRINET
-SSH_OPTS=-av -u --info=progress2 --exclude pytorch.sif --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa"
+SSH_OPTS=-av -u --info=progress2 --exclude .DS_Store --exclude pytorch.sif --exclude ._* -e "ssh -i ~/.ssh/id-ring-ecdsa"
 pull_envau:
 	rsync $(SSH_OPTS) $(ENVAU_URL)/$(DIR)/cached_data .
 
 push_envau:
 	rsync $(SSH_OPTS) cached_data $(ENVAU_URL)/$(DIR) 
 
-JEANZAY_URL=uvb28bo@jean-zay3.idris.fr:/lustre/fswork/projects/rech/fsx/uvb28bo/
+JEANZAY_URL=uvb28bo@jean-zay3.idris.fr:/lustre/fswork/projects/rech/fsx/uvb28bo # $WORK http://www.idris.fr/eng/jean-zay/cpu/jean-zay-cpu-calculateurs-disques-eng.html
 pull_jeanzay:
 	rsync $(SSH_OPTS) $(JEANZAY_URL)/$(DIR)/cached_data .
 
 push_jeanzay:
 	rsync $(SSH_OPTS) cached_data $(JEANZAY_URL)/$(DIR) 
 
-
 data_pull_envau_local:
-	rsync -av --delete --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" perrinet.l@niolon.intlocal.univ-amu.fr:/envau/work/neopto/USERS/PERRINET/Deep_learning/data/Imagenet_full /data
-	rsync -av --delete --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" perrinet.l@niolon.intlocal.univ-amu.fr:/envau/work/neopto/USERS/PERRINET/Deep_learning/data/animal_10k  data
+	rsync $(SSH_OPTS) $(ENVAU_URL)/Deep_learning/data/Imagenet_{full,bbox} data
+	rsync $(SSH_OPTS) $(ENVAU_URL)/Deep_learning/data/animal_10k  data
 
 data_pull_jeanzay:
-	rsync -av --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" uvb28bo@jean-zay3.idris.fr:/lustre/fsn1/projects/rech/fsx/uvb28bo/data/Imagenet_full /envau/work/neopto/USERS/PERRINET/Deep_learning/data
-	rsync -av --delete --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa"  uvb28bo@jean-zay3.idris.fr:/lustre/fsn1/projects/rech/fsx/uvb28bo/data/animal_10k  /envau/work/neopto/USERS/PERRINET/Deep_learning/data
+	rsync $(SSH_OPTS) $(JEANZAY_URL)/DeepLearningDatasets/Imagenet_{full,bbox} /envau/work/neopto/USERS/PERRINET/Deep_learning/data
+	rsync $(SSH_OPTS) $(JEANZAY_URL)/DeepLearningDatasets/animal_10k  /envau/work/neopto/USERS/PERRINET/Deep_learning/data
 
 # to make from niolon
 data_push_jeanzay:
-	rsync -av --delete --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" /envau/work/neopto/USERS/PERRINET/Deep_learning/data/Imagenet_{full,bbox}  uvb28bo@jean-zay3.idris.fr:/lustre/fsn1/projects/rech/fsx/uvb28bo/data
-	rsync -av --delete --info=progress2 --exclude ._n* -e "ssh -i ~/.ssh/id-ring-ecdsa" /envau/work/neopto/USERS/PERRINET/Deep_learning/data/animal_10k  uvb28bo@jean-zay3.idris.fr:/lustre/fsn1/projects/rech/fsx/uvb28bo/data
+	rsync $(SSH_OPTS) /envau/work/neopto/USERS/PERRINET/Deep_learning/data/Imagenet_{full,bbox}  $(JEANZAY_URL)/DeepLearningDatasets
+	rsync $(SSH_OPTS) /envau/work/neopto/USERS/PERRINET/Deep_learning/data/animal_10k  $(JEANZAY_URL)/DeepLearningDatasets
 
-rsync -av perrinet.l@niolon.intlocal.univ-amu.fr:/envau/work/neopto/USERS/PERRINET/Retinotopy/cached_data .
+# rsync -av perrinet.l@niolon.intlocal.univ-amu.fr:/envau/work/neopto/USERS/PERRINET/Retinotopy/cached_data .
 
 DATADIR=data
 DATAPATH=/Volumes/SSD1TO/Deep_learning/data
