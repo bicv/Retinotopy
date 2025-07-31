@@ -763,7 +763,7 @@ def make_padding_circular_again(model_retrain):
 
     return model_retrain
 
-def train_model(args:dict, model, dataloaders:torch.utils.data.DataLoader, each_steps:int=64, verbose:bool=True, model_filename=''):
+def train_model(args:dict, model, dataloaders:torch.utils.data.DataLoader, df_train=None, each_steps:int=64, verbose:bool=True, model_filename=''):
     
     # retraining the full model
     for param in model.parameters():
@@ -779,8 +779,16 @@ def train_model(args:dict, model, dataloaders:torch.utils.data.DataLoader, each_
     criterion = nn.CrossEntropyLoss() # binary_cross_entropy_with_logits
 
     # the DataFrame to record from
-    df_train = pd.DataFrame([], columns=['epoch', 'i_image', 'total_image', 'avg_loss', 'avg_acc', 'avg_loss_val', 'avg_acc_val', 'time']) 
-
+    if df_train is None:
+        i_epoch_start = 0
+        df_train = pd.DataFrame([], columns=['epoch', 'i_image', 'total_image', 'avg_loss', 'avg_acc', 'avg_loss_val', 'avg_acc_val', 'time']) 
+    else:
+        i_epoch_start = df_train['epoch'].max() + 1
+        if verbose: print(f"Starting from epoch {i_epoch_start} with {len(df_train)} records")
+        # # reset the index
+        # df_train.reset_index(drop=True, inplace=True)
+        # make a copy of the DataFrame to avoid modifying the original one
+        df_train = df_train.copy()
 
     since = time.time()
     total_image = 0
@@ -788,7 +796,7 @@ def train_model(args:dict, model, dataloaders:torch.utils.data.DataLoader, each_
     n_train_stop = args.n_train_stop
     if n_train_stop==0: n_train_stop = n_train
 
-    for i_epoch in range(args.num_epochs):
+    for i_epoch in range(i_epoch_start, args.num_epochs):
         i_image = 0
         for i_step, (images, labels) in enumerate(dataloaders['train']):
             images, labels = images.to(device), labels.to(device)
@@ -797,9 +805,9 @@ def train_model(args:dict, model, dataloaders:torch.utils.data.DataLoader, each_
             if i_image > n_train_stop: break # early stopping
 
             # https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html#use-parameter-grad-none-instead-of-model-zero-grad-or-optimizer-zero-grad
-            # optimizer.zero_grad()
-            for param in model.parameters():
-                param.grad = None
+            optimizer.zero_grad(set_to_none=True)
+            # for param in model.parameters():
+            #     param.grad = None
 
             outputs = model(images)
              
@@ -836,7 +844,11 @@ def train_model(args:dict, model, dataloaders:torch.utils.data.DataLoader, each_
                     df_train.loc[len(df_train)] = {'epoch': i_epoch, 'i_image':i_image, 'total_image':total_image, 'avg_loss':avg_loss, 'avg_acc':avg_acc, 'avg_loss_val':avg_loss_val, 'avg_acc_val':avg_acc_val, 'time':time.time() - since}
                     if verbose:  print(f"{model_filename} - Epoch {i_epoch}, i_image {i_image} : train= loss: {avg_loss:.4f} / acc : {avg_acc:.4f} - val= loss : {avg_loss_val:.4f} / acc : {avg_acc_val:.4f} / time:{time.time() - since:.1f}")
 
-    if torch.cuda.is_available(): torch.cuda.empty_cache()        
+        print(f"Saving...{model_filename}")
+        torch.save(model_retrain.state_dict(), model_filename)
+        df_train.to_json(json_filename, orient='index', indent=2)
+
+
     return model, df_train
 
 
