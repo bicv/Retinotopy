@@ -145,7 +145,8 @@ USER = os.environ['USER']  # username
 
 # platform-dependent variables
 if USER=='uvb28bo': # Jean Zay
-    DATAROOT = f'{os.environ['WORK']}/DeepLearningDatasets' # TODO
+    work_dir = os.environ['WORK']
+    DATAROOT = f'{work_dir}/DeepLearningDatasets' # TODO
     # DATAROOT = f'{os.environ['SCRATCH']}/data'
     # num_workers = 16 # on H100
     num_workers = 8 # on V100
@@ -188,11 +189,11 @@ elif HOST in ['neo-ope-de04']: # Darwin
 #     interpolation = T.InterpolationMode.NEAREST
 #     padding_mode = "reflection"
 #     num_workers = 2
-# elif 'Ahsoka' in HOST: 
-#     DATAROOT = '/Volumes/backups/2023_archives/2023_science/JNJER_PhD/data'
-#     DATAROOT = '/Volumes/data/2024_archives/2024_science/Deep_learning/data'
-#     num_workers = 24
-#     device = torch.device('cpu')
+elif 'Ahsoka' in HOST: 
+    DATAROOT = '/Volumes/backups/2023_archives/2023_science/JNJER_PhD/data'
+    DATAROOT = '/Volumes/data/2024_archives/2024_science/Deep_learning/data'
+    num_workers = 24
+    device = torch.device('cpu')
 elif 'DESKTOP-27VNO0E' in HOST: 
     DATAROOT = 'd:\\Data'
     batch_size = 50
