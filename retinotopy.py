@@ -143,6 +143,8 @@ batch_size = 150
 
 USER = os.environ['USER']  # username
 
+# trying auto-commit tools - https://github.com/clianor/ollama-commit
+
 # platform-dependent variables
 if USER=='uvb28bo': # Jean Zay
     # work_dir = os.environ['WORK']
