@@ -236,8 +236,8 @@ class Params:
     batch_size: int = batch_size # Set number of images per input batch
     batch_size_val: int = batch_size # Set number of images per input batch
     lr: float = 5.e-5 # Set learning rate 
-    mutnemom: float = .02 # Set the momentum as 1 - mutnemom
-    beta2: float = 0 # Sets the second momentum - use SGD if set to 0
+    mutnemom: float = .02 # Set the momentum = 1 - mutnemom
+    ateb2: float = 0 # Sets the second momentum as beta2 = 1 - ateb2 or use SGD if it is set to 0
     rs_min: float = 0.00 # Set minimum radius of the log-polar grid
     rs_max: float = -5.00 # Set maximum radius of the log-polar grid
     
@@ -774,8 +774,8 @@ def train_model(args:dict, model, dataloaders:torch.utils.data.DataLoader, df_tr
         param.requires_grad = True        
 
     # sets the optimizer
-    if args.beta2 > 0.: 
-        optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, betas=(1-args.mutnemom, 1-args.beta2)) 
+    if args.ateb2 > 0.: 
+        optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, betas=(1-args.mutnemom, 1-args.ateb2)) 
     else:
         optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=1-args.mutnemom) # to set training variables
     
