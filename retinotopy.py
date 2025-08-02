@@ -746,8 +746,12 @@ def datasets_transforms(args:dict, im_mean:np.array=im_mean, im_std:np.array=im_
 
 #############################################################
 def make_padding_circular_again(model_retrain):
-    """Make the padding circular for the model.
-    This is needed for the retraining of the model in log-polar coordinates."""
+    """
+    Make the padding circular for the model.
+    
+    This is needed for the retraining of the model in log-polar coordinates.
+    TODO: test if that helps improving the accuracy of the model.
+    """
     for child in list(model_retrain.children()):
         if isinstance(child, (nn.Conv2d)):
             child.padding_mode = 'circular'
