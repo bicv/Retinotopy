@@ -856,7 +856,7 @@ def train_model(args:dict, model, dataloaders:torch.utils.data.DataLoader, df_tr
     return model, df_train
 
 
-def apply_weights(model, model_path:str, verbose=True):
+def apply_weights(model, model_path:str, verbose:bool=True):
     """Apply the weights to the model.
     Args:
         model: torch model, the model to apply the weights to
@@ -901,7 +901,7 @@ def load_model(model_name:str='resnet50', model_path:str=None, do_scratch:bool=F
             model = apply_weights(model, 
                           os.path.join(data_cache, f'{model_name}.pth'), verbose=verbose)
     else: # we wish to use a saved model
-        model = apply_weights(model, model_path, verbose=True)
+        model = apply_weights(model, model_path, verbose=verbose)
 
     if do_circular:
         model = make_padding_circular_again(model)
