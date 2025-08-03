@@ -21,7 +21,7 @@ pull_envau:
 push_envau:
 	rsync $(SSH_OPTS) cached_data $(ENVAU_URL)/$(DIR) 
 
-JEANZAY_URL=uvb28bo@jean-zay3.idris.fr:/lustre/fswork/projects/rech/fsx/uvb28bo # $WORK http://www.idris.fr/eng/jean-zay/cpu/jean-zay-cpu-calculateurs-disques-eng.html
+JEANZAY_URL=uvb28bo@jean-zay3.idris.fr:/lustre/fswork/projects/rech/fsx/uvb28bo# $WORK http://www.idris.fr/eng/jean-zay/cpu/jean-zay-cpu-calculateurs-disques-eng.html
 pull_jeanzay:
 	rsync $(SSH_OPTS) $(JEANZAY_URL)/$(DIR)/cached_data .
 
