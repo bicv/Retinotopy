@@ -139,7 +139,7 @@ os.makedirs(data_cache, exist_ok=True)
 interpolation = T.InterpolationMode.BILINEAR
 padding_mode = "border"
 
-batch_size = 150
+batch_size = 256
 
 USER = os.environ['USER']  # username
 
@@ -620,13 +620,17 @@ def CleanRotations_function(image, mask, angles=[0]):
     
 
 # Resnet datasets initialisation
-def get_transforms(args:dict, im_mean:np.array=im_mean, im_std:np.array=im_std):
+def get_transforms(args:dict, im_mean:np.array=im_mean, im_std:np.array=im_std, do_augment:bool=True):
     """Get the transforms for the image data set."""
     
     transforms = [                
         T.ToImage(),  # Convert to tensor, only needed if you had a PIL image
         T.ToDtype(torch.float32, scale=True),  # Normalize expects float input
     ]   
+
+    if do_augment: # apply data augmentation to the image
+        transforms.append(RandomHorizontalFlip())
+        transforms.append(RandomCrop())
 
     if args.do_rotation and not args.do_saccade: # apply rotation to the image
         args.batch_size_val, args.batch_size = 1, 1
@@ -646,7 +650,7 @@ def get_transforms(args:dict, im_mean:np.array=im_mean, im_std:np.array=im_std):
         args.batch_size_val, args.batch_size = 1, 1
         grid_translate = to_dev(args, generate_translate_roll_grids(args))
         transforms.append(transform_apply_grid(grid_translate, 'multiple'))
-     
+
 
     if args.do_polar and not (args.do_saccade or args.do_zoom or args.do_translate): # apply log-polar mapping to the image
         grid_polar = get_grid(args) if not args.do_rotation else get_grid(args).repeat(len(args.angles), 1, 1, 1)
@@ -656,7 +660,6 @@ def get_transforms(args:dict, im_mean:np.array=im_mean, im_std:np.array=im_std):
         transforms.append(T.Resize(int(args.image_size), interpolation=interpolation, antialias=True))
         transforms.append(T.CenterCrop((int(args.image_size), int(args.image_size))))
         
-    
     if args.do_mask and not (args.do_polar or args.do_saccade or args.do_zoom): # apply a circular mask to the image
         mask = to_dev(args, make_mask(args.image_size))
         transforms.append(ApplyMask(mask))
@@ -707,7 +710,7 @@ def image_datasets_transforms(args:dict, im_mean:np.array=im_mean, im_std:np.arr
     image_datasets  = {}
     for folder in args.folders:
 
-        data_transform = get_transforms(args, im_mean=im_mean, im_std=im_std)
+        data_transform = get_transforms(args, im_mean=im_mean, im_std=im_std, do_augment=(folder=='train' and not args.do_raw))
 
         # load the data
         path = os.path.join(args.root, folder) # data path
