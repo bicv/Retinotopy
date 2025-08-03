@@ -630,7 +630,7 @@ def get_transforms(args:dict, im_mean:np.array=im_mean, im_std:np.array=im_std, 
 
     if do_augment: # apply data augmentation to the image
         transforms.append(T.RandomHorizontalFlip())
-        transforms.append(T.RandomCrop())
+        # transforms.append(T.RandomCrop())
 
     if args.do_rotation and not args.do_saccade: # apply rotation to the image
         args.batch_size_val, args.batch_size = 1, 1
