@@ -14,7 +14,7 @@ push_meso:
 
 # cd /envau/work/neopto/USERS/PERRINET/Retinotopy 
 ENVAU_URL=perrinet.l@niolon.intlocal.univ-amu.fr:/envau/work/neopto/USERS/PERRINET
-SSH_OPTS=-av -u --info=progress2 --exclude .DS_Store --exclude pytorch.sif --exclude ._* -e "ssh -i ~/.ssh/id-ring-ecdsa"
+SSH_OPTS=-av -u --info=progress2 --exclude .DS_Store --exclude pytorch.sif --exclude ._*  --exclude log_* -e "ssh -i ~/.ssh/id-ring-ecdsa"
 pull_envau:
 	rsync $(SSH_OPTS) $(ENVAU_URL)/$(DIR)/cached_data .
 
