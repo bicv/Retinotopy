@@ -83,7 +83,7 @@ all:
 #################@#################@#################@#################
 
 optuna:
-	optuna-dashboard sqlite:///cached_data/2025-05-08_optuna.sqlite3
+	optuna-dashboard sqlite:///cached_data/2025-06-20_optuna.sqlite3
 
 #################@#################@#################@#################
 

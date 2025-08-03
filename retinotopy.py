@@ -767,7 +767,8 @@ def make_padding_circular_again(model_retrain):
 
     return model_retrain
 
-def train_model(args:dict, model, dataloaders:torch.utils.data.DataLoader, df_train=None, each_steps:int=64, verbose:bool=True, model_filename='resnet.pt'):
+def train_model(args:dict, model, dataloaders:torch.utils.data.DataLoader, df_train=None, each_steps:int=64, 
+                verbose:bool=True, do_save:bool=True, model_filename='resnet.pt'):
     
     # retraining the full model
     for param in model.parameters():
@@ -848,9 +849,10 @@ def train_model(args:dict, model, dataloaders:torch.utils.data.DataLoader, df_tr
                     df_train.loc[len(df_train)] = {'epoch': i_epoch, 'i_image':i_image, 'total_image':total_image, 'avg_loss':avg_loss, 'avg_acc':avg_acc, 'avg_loss_val':avg_loss_val, 'avg_acc_val':avg_acc_val, 'time':time.time() - since}
                     if verbose:  print(f"{model_filename} - Epoch {i_epoch}, i_image {i_image} : train= loss: {avg_loss:.4f} / acc : {avg_acc:.4f} - val= loss : {avg_loss_val:.4f} / acc : {avg_acc_val:.4f} / time:{time.time() - since:.1f}")
 
-        print(f"Saving...{model_filename}")
-        torch.save(model.state_dict(), model_filename)
-        df_train.to_json(model_filename.replace('pt', 'json'), orient='index', indent=2)
+        if do_save:
+            if verbose:  print(f"Saving...{model_filename}")
+            torch.save(model.state_dict(), model_filename)
+            df_train.to_json(model_filename.replace('pt', 'json'), orient='index', indent=2)
 
 
     return model, df_train
