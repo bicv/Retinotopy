@@ -235,9 +235,9 @@ class Params:
     seed: int = 1998 # Set the seed for reproducibility 
     batch_size: int = batch_size # Set number of images per input batch
     batch_size_val: int = batch_size # Set number of images per input batch
-    lr: float = 5.e-5 # Set learning rate 
-    mutnemom: float = .02 # Set the momentum = 1 - mutnemom
-    ateb2: float = 0 # Sets the second momentum as beta2 = 1 - ateb2 or use SGD if it is set to 0
+    lr: float = 1.e-5 # Set learning rate 
+    mutnemom: float = .1 # Set the momentum = 1 - mutnemom
+    ateb2: float = 0.01 # Sets the second momentum as beta2 = 1 - ateb2 or use SGD if it is set to 0
     rs_min: float = 0.00 # Set minimum radius of the log-polar grid
     rs_max: float = -5.00 # Set maximum radius of the log-polar grid
     
