@@ -776,7 +776,7 @@ def train_model(args:dict, model, dataloaders:torch.utils.data.DataLoader, df_tr
 
     # sets the optimizer
     if args.ateb2 > 0.: 
-        optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, betas=(1-args.mutnemom, 1-args.ateb2)) 
+        optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, betas=(1-args.mutnemom, 1-args.ateb2)) 
     else:
         optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=1-args.mutnemom) # to set training variables
     
