@@ -139,7 +139,7 @@ os.makedirs(data_cache, exist_ok=True)
 interpolation = T.InterpolationMode.BILINEAR
 padding_mode = "border"
 
-batch_size = 256
+batch_size = 128
 
 USER = os.environ['USER']  # username
 
