@@ -235,7 +235,8 @@ class Params:
     seed: int = 1998 # Set the seed for reproducibility 
     batch_size: int = batch_size # Set number of images per input batch
     batch_size_val: int = batch_size # Set number of images per input batch
-    lr: float = 1.e-5 # Set learning rate 
+    lr_conv: float = 1.e-5 # Set learning rate for the classification layers
+    lr_class: float = 1.e-3 # Set learning rate for the classifier layers
     mutnemom: float = 0.1 # Set the momentum = 1 - mutnemom
     ateb2: float = 0.001 # Sets the second momentum as beta2 = 1 - ateb2 or use SGD if it is set to 0
     weight_decay: float = 0.01 # See https://docs.pytorch.org/docs/stable/generated/torch.optim.AdamW.html
@@ -782,11 +783,16 @@ def train_model(args:dict, model, dataloaders:torch.utils.data.DataLoader, df_tr
     for param in model.parameters():
         param.requires_grad = True        
 
+    params = [
+        {'params': model.backbone.parameters(), 'lr': args.lr_conv},  # Pretrained layers
+        {'params': model.classifier.parameters(), 'lr': args.lr_class}  # New classifier
+    ]
+
     # sets the optimizer
     if args.ateb2 > 0.: 
-        optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, betas=(1-args.mutnemom, 1-args.ateb2), weight_decay=args.weight_decay) 
+        optimizer = torch.optim.AdamW(params, betas=(1-args.mutnemom, 1-args.ateb2), weight_decay=args.weight_decay) 
     else:
-        optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=1-args.mutnemom) # to set training variables
+        optimizer = torch.optim.SGD(params, momentum=1-args.mutnemom, weight_decay=args.weight_decay) # to set training variables
     
     # https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html 
     criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing) # binary_cross_entropy_with_logits
