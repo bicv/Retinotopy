@@ -629,7 +629,7 @@ def get_transforms(args:dict, im_mean:np.array=im_mean, im_std:np.array=im_std, 
     transforms = [                
         T.ToImage(),  # Convert to tensor, only needed if you had a PIL image
         T.ToDtype(torch.float32, scale=True),  # Normalize expects float input
-    ]   
+    ]
 
     if do_augment: # apply data augmentation to the image
         transforms.append(T.RandomHorizontalFlip())
@@ -715,7 +715,8 @@ def image_datasets_transforms(args:dict, im_mean:np.array=im_mean, im_std:np.arr
     image_datasets  = {}
     for folder in args.folders:
 
-        data_transform = get_transforms(args, im_mean=im_mean, im_std=im_std, do_augment=(folder=='train' and not args.do_raw))
+        data_transform = get_transforms(args, im_mean=im_mean, im_std=im_std, 
+                                        do_augment=(folder=='train' and not args.do_raw))
 
         # load the data
         path = os.path.join(args.root, folder) # data path
@@ -783,9 +784,16 @@ def train_model(args:dict, model, dataloaders:torch.utils.data.DataLoader, df_tr
     for param in model.parameters():
         param.requires_grad = True        
 
+    backbone_params = []
+    for name, param in model.named_parameters():
+        if 'fc' not in name: backbone_params.append(param)
+
+    # Parameters for the classifier (final fully connected layer)
+    classifier_params = list(model.fc.parameters())
+
     params = [
-        {'params': model.backbone.parameters(), 'lr': args.lr_conv},  # Pretrained layers
-        {'params': model.classifier.parameters(), 'lr': args.lr_class}  # New classifier
+        {'params': backbone_params, 'lr': args.lr_conv},  # Pretrained layers
+        {'params': classifier_params, 'lr': args.lr_class}  # New classifier
     ]
 
     # sets the optimizer
@@ -897,17 +905,21 @@ def load_model(model_name:str='resnet50', model_path:str=None, do_scratch:bool=F
         do_circular: bool, whether to make the padding circular or not
         verbose: bool, whether to print the loading message or not
     Returns:
-        model: torch model, the model with the weights applied"""
+        model: torch model, the model with the weights applied
+
+    BEWARE: on a cluster node, internet is unreachable, so we cannot load the weights from torchvision.models.
+    Instead, we load the weights from a local file.    
+    """
     # get the architecture of the network
             
     if model_name=='resnet18':
-        # model = torchvision.models.resnet18(weights=None if do_scratch else torchvision.models.ResNet18_Weights.DEFAULT)
+        # model = models.resnet18(weights=None if do_scratch else torchvision.models.ResNet18_Weights.DEFAULT)
         model = models.resnet18(weights=None)
     elif model_name=='resnet50':
-        # model = torchvision.models.resnet50(weights=None if do_scratch else torchvision.models.ResNet50_Weights.DEFAULT)
+        # model = models.resnet50(weights=None if do_scratch else torchvision.models.ResNet50_Weights.DEFAULT)
         model = models.resnet50(weights=None)
     elif model_name=='resnet101':
-        # model = torchvision.models.resnet101(weights=None if do_scratch else torchvision.models.ResNet101_Weights.DEFAULT)
+        # model = models.resnet101(weights=None if do_scratch else torchvision.models.ResNet101_Weights.DEFAULT)
         model = models.resnet101(weights=None)
     else:
         raise ValueError(f'Unknown model {model_name}')
