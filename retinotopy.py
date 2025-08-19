@@ -238,6 +238,8 @@ class Params:
     lr: float = 1.e-5 # Set learning rate 
     mutnemom: float = .1 # Set the momentum = 1 - mutnemom
     ateb2: float = 0.01 # Sets the second momentum as beta2 = 1 - ateb2 or use SGD if it is set to 0
+    weight_decay: float = 0.01 # See https://docs.pytorch.org/docs/stable/generated/torch.optim.AdamW.html
+    label_smoothing: float = 0.01 # See https://docs.pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html
     rs_min: float = 0.00 # Set minimum radius of the log-polar grid
     rs_max: float = -5.00 # Set maximum radius of the log-polar grid
     
@@ -631,7 +633,8 @@ def get_transforms(args:dict, im_mean:np.array=im_mean, im_std:np.array=im_std, 
     if do_augment: # apply data augmentation to the image
         transforms.append(T.RandomHorizontalFlip())
         # transforms.append(T.RandomCrop())
-        transforms.append(T.AutoAugment())
+        # transforms.append(T.AutoAugment())
+        transforms.append(T.TrivialAugmentWide())  # Doesn't include rotation by default
 
     if args.do_rotation and not args.do_saccade: # apply rotation to the image
         args.batch_size_val, args.batch_size = 1, 1
@@ -781,12 +784,12 @@ def train_model(args:dict, model, dataloaders:torch.utils.data.DataLoader, df_tr
 
     # sets the optimizer
     if args.ateb2 > 0.: 
-        optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, betas=(1-args.mutnemom, 1-args.ateb2)) 
+        optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, betas=(1-args.mutnemom, 1-args.ateb2), weight_decay=args.weight_decay) 
     else:
         optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=1-args.mutnemom) # to set training variables
     
     # https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html 
-    criterion = nn.CrossEntropyLoss() # binary_cross_entropy_with_logits
+    criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing) # binary_cross_entropy_with_logits
 
     # the DataFrame to record from
     if df_train is None:
