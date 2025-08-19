@@ -139,7 +139,7 @@ os.makedirs(data_cache, exist_ok=True)
 interpolation = T.InterpolationMode.BILINEAR
 padding_mode = "border"
 
-batch_size = 128
+batch_size = 50 # Set the batch size for training and validation
 
 USER = os.environ['USER']  # username
 
@@ -236,8 +236,8 @@ class Params:
     batch_size: int = batch_size # Set number of images per input batch
     batch_size_val: int = batch_size # Set number of images per input batch
     lr: float = 1.e-5 # Set learning rate 
-    mutnemom: float = .1 # Set the momentum = 1 - mutnemom
-    ateb2: float = 0.01 # Sets the second momentum as beta2 = 1 - ateb2 or use SGD if it is set to 0
+    mutnemom: float = 0.1 # Set the momentum = 1 - mutnemom
+    ateb2: float = 0.001 # Sets the second momentum as beta2 = 1 - ateb2 or use SGD if it is set to 0
     weight_decay: float = 0.01 # See https://docs.pytorch.org/docs/stable/generated/torch.optim.AdamW.html
     label_smoothing: float = 0.01 # See https://docs.pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html
     rs_min: float = 0.00 # Set minimum radius of the log-polar grid
