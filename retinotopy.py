@@ -823,6 +823,7 @@ def train_model(args:dict, model, dataloaders:torch.utils.data.DataLoader, df_tr
     n_train_stop = args.n_train_stop
     if n_train_stop==0: n_train_stop = n_train
 
+    avg_loss_ = avg_acc_ = []
     for i_epoch in range(i_epoch_start, args.num_epochs):
         i_image = 0
         for i_step, (images, labels) in enumerate(dataloaders['train']):
@@ -844,11 +845,15 @@ def train_model(args:dict, model, dataloaders:torch.utils.data.DataLoader, df_tr
 
             _, preds = torch.max(outputs.data, dim=1)
 
-            avg_loss = loss.item() * images.size(0)
-            avg_acc = torch.mean((preds == labels.data)*1.).cpu().item()
+            avg_loss.append(loss.item() * images.size(0))
+            avg_acc.append(torch.mean((preds == labels.data)*1.).cpu().item()) # append average accuracy in the last batch
 
             if (i_step % (max(n_train_stop//args.batch_size//each_steps, 1))==0) or (i_step == n_train_stop-1):
                 with torch.no_grad():
+
+                    avg_loss = np.mean(avg_loss_)
+                    avg_acc = np.mean(avg_acc_)
+
                     loss_val = 0
                     acc_val = 0
                     model = model.eval()
@@ -870,6 +875,7 @@ def train_model(args:dict, model, dataloaders:torch.utils.data.DataLoader, df_tr
 
                     df_train.loc[len(df_train)] = {'epoch': i_epoch, 'i_image':i_image, 'total_image':total_image, 'avg_loss':avg_loss, 'avg_acc':avg_acc, 'avg_loss_val':avg_loss_val, 'avg_acc_val':avg_acc_val, 'time':time.time() - since}
                     if verbose:  print(f"{model_filename} - Epoch {i_epoch}, i_image {i_image} : train= loss: {avg_loss:.4f} / acc : {avg_acc:.4f} - val= loss : {avg_loss_val:.4f} / acc : {avg_acc_val:.4f} / time:{time.time() - since:.1f}")
+                avg_loss_ = avg_acc_ = []
 
         if do_save:
             if verbose:  print(f"Saving...{model_filename}")
