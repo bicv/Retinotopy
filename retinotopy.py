@@ -839,14 +839,14 @@ def train_model(args:dict, model, dataloaders:torch.utils.data.DataLoader, df_tr
 
             outputs = model(images)
              
-            loss = criterion(outputs, labels)            
+            loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
 
             _, preds = torch.max(outputs.data, dim=1)
 
-            avg_loss.append(loss.item() * images.size(0))
-            avg_acc.append(torch.mean((preds == labels.data)*1.).cpu().item()) # append average accuracy in the last batch
+            avg_loss_.append(loss.item() * images.size(0))
+            avg_acc_.append(torch.mean((preds == labels.data)*1.).cpu().item()) # append average accuracy in the last batch
 
             if (i_step % (max(n_train_stop//args.batch_size//each_steps, 1))==0) or (i_step == n_train_stop-1):
                 with torch.no_grad():
