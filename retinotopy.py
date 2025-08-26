@@ -155,10 +155,9 @@ if USER=='uvb28bo': # Jean Zay
 # elif '.cluster' in HOST: # mesocentre
 #     DATAROOT = '/scratch/lperrinet/science/Deep_learning/data'
 #     num_workers = 8
-# elif 'm-gpu' in HOST: 
-#     DATAROOT = 'data'
-#     # batch_size = 50
-#     num_workers = 2
+elif 'm-gpu' in HOST: 
+    DATAROOT = 'data'
+    num_workers = 2
 # elif HOST in ['babbage']: # 
 #     DATAROOT = '/data/Deep_learning/data'
 #     num_workers = 2
