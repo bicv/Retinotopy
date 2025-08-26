@@ -157,7 +157,7 @@ if USER=='uvb28bo': # Jean Zay
 #     num_workers = 8
 elif 'm-gpu' in HOST: # MESONET
     DATAROOT = 'data'
-    num_workers = 2
+    num_workers = 16
 # elif HOST in ['babbage']: # 
 #     DATAROOT = '/data/Deep_learning/data'
 #     num_workers = 2
@@ -902,7 +902,8 @@ def apply_weights(model, model_path:str, verbose:bool=True):
     return model
 
 import torchvision.models as models
-def load_model(model_name:str='resnet50', model_path:str=None, do_scratch:bool=False, do_circular:bool=False, verbose:bool=True):
+def load_model(model_name:str='resnet50', model_path:str=None, do_scratch:bool=False, 
+               do_circular:bool=False, verbose:bool=True):
     """Load the model from the torchvision library.
     Args:
         model_name: str, name of the model to load (resnet18, resnet50, resnet101)
