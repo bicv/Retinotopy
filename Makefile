@@ -1,5 +1,5 @@
 DIR=Retinotopy
-default:notebooks_learn
+default:notebooks_intro notebooks_learn
 #################@#################@#################@#################
 # 
 MESO_URL=lperrinet@login.mesocentre.univ-amu.fr:/scratch/lperrinet/science/

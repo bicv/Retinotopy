@@ -19,6 +19,7 @@ datetag = strftime("%Y-%m-%d", gmtime())
 datetag = '2025-03-06' # Jean Zay
 datetag = '2025-05-08' # Jean Zay
 datetag = '2025-06-20' # Jean Zay
+datetag = '2025-11-13' # Jean Zay
 
 #############################################################
 
@@ -158,6 +159,12 @@ if USER=='uvb28bo': # Jean Zay
 elif 'm-gpu' in HOST: # MESONET
     DATAROOT = 'data'
     num_workers = 16
+elif 'gaia' in HOST: # MAC STUDIO
+    DATAROOT = '/Volumes/SSD1TO/DeepLearningDatasets'
+    DATAROOT = 'data'
+    batch_size = 250 # Set the batch size for training and validation
+    num_workers = 2
+
 # elif HOST in ['babbage']: # 
 #     DATAROOT = '/data/Deep_learning/data'
 #     num_workers = 2
@@ -621,6 +628,12 @@ def CleanRotations_function(image, mask, angles=[0]):
     temp = torch.stack(temp)
     return temp[:,:,::]*torch.from_numpy(mask)#.to(device)
     
+from torchvision import io
+
+def fast_decode(path):
+    # Returns a uint8 Tensor [C, H, W]
+    img = io.read_image(str(path))          # fast, no PIL
+    return img
 
 # Resnet datasets initialisation
 def get_transforms(args:dict, im_mean:np.array=im_mean, im_std:np.array=im_std, do_augment:bool=True):
@@ -628,6 +641,7 @@ def get_transforms(args:dict, im_mean:np.array=im_mean, im_std:np.array=im_std, 
     
     transforms = [                
         T.ToImage(),  # Convert to tensor, only needed if you had a PIL image
+        # T.Lambda(fast_decode),
         T.ToDtype(torch.float32, scale=True),  # Normalize expects float input
     ]
 
@@ -731,7 +745,8 @@ def image_datasets_transforms(args:dict, im_mean:np.array=im_mean, im_std:np.arr
 
 
 def datasets_transforms(args:dict, im_mean:np.array=im_mean, im_std:np.array=im_std,
-                        num_workers:int=num_workers, pin_memory:bool=True, shuffle:bool=True, verbose:bool=True):
+                        num_workers:int=num_workers, pin_memory:bool=False, persistent_workers:bool=True, 
+                        shuffle:bool=True, verbose:bool=True):
     """
     Load the image data set and apply the transforms to it.
     return a dictionary with the folder name as key and the data set as value.
@@ -746,7 +761,8 @@ def datasets_transforms(args:dict, im_mean:np.array=im_mean, im_std:np.array=im_
         dataloaders[folder] = torch.utils.data.DataLoader(
                                 image_datasets[folder], 
                                 batch_size=args.batch_size if folder=='train' else args.batch_size_val,
-                                shuffle=shuffle, num_workers=num_workers, pin_memory=pin_memory
+                                shuffle=shuffle, num_workers=num_workers, pin_memory=pin_memory,
+                                persistent_workers=persistent_workers if num_workers > 0 else False
                         )
     return dataloaders
 
