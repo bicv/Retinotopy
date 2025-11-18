@@ -747,7 +747,7 @@ def image_datasets_transforms(args:dict, im_mean:np.array=im_mean, im_std:np.arr
         # load the data
         root_path = os.path.join(args.root, folder) # data path
         image_datasets[folder] = ImageFolder(root_path, 
-                                             loader=tv_safe_loader,  # Use torchvision.io instead of PIL    
+                                            #  loader=tv_safe_loader,  # Use torchvision.io instead of PIL    
                                              transform=data_transform,
                                              is_valid_file=is_valid_file)
 
