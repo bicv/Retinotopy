@@ -160,9 +160,9 @@ elif 'm-gpu' in HOST: # MESONET
     DATAROOT = 'data'
     num_workers = 16
 elif 'gaia' in HOST: # MAC STUDIO
-    DATAROOT = '/Volumes/SSD1TO/DeepLearningDatasets'
     DATAROOT = 'data'
-    batch_size = 250 # Set the batch size for training and validation
+    DATAROOT = '/Volumes/SSD1TO/DeepLearningDatasets'
+    batch_size = 512 # Set the batch size for training and validation
     num_workers = 2
 
 # elif HOST in ['babbage']: # 
@@ -718,7 +718,19 @@ def is_valid_file(path:str):
     
     return True
 
+import torchvision.io
+from torchvision import transforms
 
+def tv_safe_loader(path, args:dict):
+    try:
+        # Load image as tensor (C, H, W) - no PIL involved
+        img = torchvision.io.read_image(path)
+        return img
+    except Exception as e:
+        print(f"⚠️ Skipped corrupted image: {path} | Error: {str(e)}")
+        # Return a dummy tensor matching your model's input shape (e.g., 3x224x224)
+        return torch.zeros((3, args.image_size, args.image_size), dtype=torch.uint8)
+    
 def image_datasets_transforms(args:dict, im_mean:np.array=im_mean, im_std:np.array=im_std, verbose:bool=True):
     """
     Load the image data set and apply the transforms to it.
@@ -733,8 +745,9 @@ def image_datasets_transforms(args:dict, im_mean:np.array=im_mean, im_std:np.arr
                                         do_augment=(folder=='train' and not args.do_raw))
 
         # load the data
-        path = os.path.join(args.root, folder) # data path
-        image_datasets[folder] = ImageFolder(path, 
+        root_path = os.path.join(args.root, folder) # data path
+        image_datasets[folder] = ImageFolder(root_path, 
+                                             loader=tv_safe_loader,  # Use torchvision.io instead of PIL    
                                              transform=data_transform,
                                              is_valid_file=is_valid_file)
 
