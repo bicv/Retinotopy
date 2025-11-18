@@ -721,7 +721,7 @@ def is_valid_file(path:str):
 import torchvision.io
 from torchvision import transforms
 
-def tv_safe_loader(path, args:dict):
+def tv_safe_loader(path):
     try:
         # Load image as tensor (C, H, W) - no PIL involved
         img = torchvision.io.read_image(path)
