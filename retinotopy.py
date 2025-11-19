@@ -186,16 +186,16 @@ elif HOST in ['neo-ope-de04']: # Darwin
 # elif HOST in ['brain-lid-004']: # GPU manu  
 #     DATAROOT = '/data/JNJER/Deep_learning/data'
 #     num_workers = 16
-# elif 'obiwan' in HOST: 
+elif 'obiwan' in HOST: 
 #     # DATAROOT = '/Volumes/UnaTera/2023_archives/2023_science/JNJER_PhD/data'
 #     DATAROOT = '/Volumes/data/2024_archives/2024_science/Deep_learning/data'
 #     DATAROOT = '/Volumes/SSD1TO/ImageNet'
 #     DATAROOT = '/Volumes/SSD1TO/Deep_learning/ILSVRC2010_ImageNet'
-#     DATAROOT = 'data'
+    DATAROOT = 'data'
 #     DATAROOT = '/Volumes/SSD1TO/DeepLearningDatasets'
 #     interpolation = T.InterpolationMode.NEAREST
 #     padding_mode = "reflection"
-#     num_workers = 2
+    num_workers = 2
 elif 'Ahsoka' in HOST: 
     DATAROOT = '/Volumes/backups/2023_archives/2023_science/JNJER_PhD/data'
     DATAROOT = '/Volumes/data/2024_archives/2024_science/Deep_learning/data'
@@ -718,13 +718,13 @@ def is_valid_file(path:str):
     
     return True
 
-import torchvision.io
+import torchvision.io as io
 from torchvision import transforms
 
 def tv_safe_loader(path):
     try:
         # Load image as tensor (C, H, W) - no PIL involved
-        img = torchvision.io.read_image(path)
+        img = io.read_image(path)
         return img
     except Exception as e:
         print(f"⚠️ Skipped corrupted image: {path} | Error: {str(e)}")
@@ -747,7 +747,7 @@ def image_datasets_transforms(args:dict, im_mean:np.array=im_mean, im_std:np.arr
         # load the data
         root_path = os.path.join(args.root, folder) # data path
         image_datasets[folder] = ImageFolder(root_path, 
-                                            #  loader=tv_safe_loader,  # Use torchvision.io instead of PIL    
+                                             loader=tv_safe_loader,  # Use torchvision.io instead of PIL    
                                              transform=data_transform,
                                              is_valid_file=is_valid_file)
 
