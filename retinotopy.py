@@ -721,16 +721,23 @@ def is_valid_file(path:str):
 import torchvision.io as io
 from torchvision import transforms
 
-def tv_safe_loader(path):
+def tv_safe_loader(path: str, dummy_shape=(3, 224, 224)) -> torch.Tensor:
+    """
+    Loads an image path into a tensor using the fast torchvision.io library.
+    
+    If the image is corrupted and can't be read, it returns a dummy
+    black tensor instead of crashing the entire program.
+    """
     try:
-        # Load image as tensor (C, H, W) - no PIL involved
-        img = io.read_image(path)
+        # Load image as a tensor of type uint8 with shape (C, H, W)
+        img = torchvision.io.read_image(path)
         return img
     except Exception as e:
-        print(f"⚠️ Skipped corrupted image: {path} | Error: {str(e)}")
-        # Return a dummy tensor matching your model's input shape (e.g., 3x224x224)
-        return torch.zeros((3, args.image_size, args.image_size), dtype=torch.uint8)
-    
+        # This is the critical error handling part.
+        print(f"⚠️ Skipped corrupted image: {os.path.basename(path)} | Reason: {e}")
+        # Return a tensor of zeros with the expected shape
+        return torch.zeros(dummy_shape, dtype=torch.uint8)
+
 def image_datasets_transforms(args:dict, im_mean:np.array=im_mean, im_std:np.array=im_std, verbose:bool=True):
     """
     Load the image data set and apply the transforms to it.
@@ -746,8 +753,10 @@ def image_datasets_transforms(args:dict, im_mean:np.array=im_mean, im_std:np.arr
 
         # load the data
         root_path = os.path.join(args.root, folder) # data path
+        # custom_loader = lambda path: tv_safe_loader(path, dummy_shape=(3, args.image_size, args.image_size))
+
         image_datasets[folder] = ImageFolder(root_path, 
-                                             loader=tv_safe_loader,  # Use torchvision.io instead of PIL    
+                                            #  loader=custom_loader,  # Use torchvision.io instead of PIL    
                                              transform=data_transform,
                                              is_valid_file=is_valid_file)
 
