@@ -19,7 +19,7 @@ datetag = strftime("%Y-%m-%d", gmtime())
 datetag = '2025-03-06' # Jean Zay
 datetag = '2025-05-08' # Jean Zay
 datetag = '2025-06-20' # Jean Zay
-datetag = '2025-11-13' # Jean Zay
+datetag = '2025-11-21' # Jean Zay
 
 #############################################################
 
@@ -29,6 +29,7 @@ import numpy as np
 import json
 from tqdm import tqdm
 import matplotlib
+matplotlib.use('Agg')       # “Agg” = raster graphics, no GUI
 import matplotlib.pyplot as plt
 from matplotlib.figure import SubplotParams
 subplotpars = SubplotParams(left=0.125, right=.95, bottom=0.25, top=.975, wspace=0.05, hspace=0.05,)
@@ -160,8 +161,8 @@ elif 'm-gpu' in HOST: # MESONET
     DATAROOT = 'data'
     num_workers = 16
 elif 'gaia' in HOST: # MAC STUDIO
-    DATAROOT = 'data'
     DATAROOT = '/Volumes/SSD1TO/DeepLearningDatasets'
+    DATAROOT = 'data'
     batch_size = 512 # Set the batch size for training and validation
     num_workers = 2
 
@@ -847,6 +848,7 @@ def train_model(args:dict, model, dataloaders:torch.utils.data.DataLoader, df_tr
     if df_train is None:
         i_epoch_start = 0
         df_train = pd.DataFrame([], columns=['epoch', 'i_image', 'total_image', 'avg_loss', 'avg_acc', 'avg_loss_val', 'avg_acc_val', 'time']) 
+        if verbose: print(f"Starting learning...")
     else:
         i_epoch_start = df_train['epoch'].max() + 1
         if verbose: print(f"Starting from epoch {i_epoch_start} with {len(df_train)} records")
