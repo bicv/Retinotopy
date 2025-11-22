@@ -29,6 +29,8 @@
 # wget https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_train.tar --no-check-certificate
 # wget https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_val.tar --no-check-certificate
 
+# locally:
+# rsync -av --info=progress2 laurentperrinet@octo.local:/2025_data/SSD1TO/DeepLearningDatasets/ILSVRC2010_ImageNet/ILSVRC2012_img_{train,val}.tar .
 
 # Make imagenet directory
 mkdir -p Imagenet_full
