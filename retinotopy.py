@@ -213,6 +213,17 @@ elif 'Newton' in HOST:
         DATAROOT = 'c:\\Users\\JnJer\\Nextcloud\\JNJER_PhD\\data'
     batch_size = 50
     num_workers = 4
+elif 'port-dauce' in HOST:
+    import subprocess
+    mount_point = os.path.expanduser("~/data")
+    try:
+        os.makedirs(mount_point, exist_ok=True)
+        subprocess.run(["sshfs", "dauce.e@brain-lid-004:data", mount_point, "-o", "reconnect"], check=True)
+    except:
+        pass
+    DATAROOT = "/home/dauce/data"
+    batch_size = 50
+    num_workers = 4
 else:
     raise ValueError(f'Unknown host {HOST=} / {USER=}')
 
