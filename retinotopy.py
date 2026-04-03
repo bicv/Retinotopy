@@ -130,8 +130,6 @@ def print_gpu_memory():
     for var_name, var in globals().items():
         if torch.is_tensor(var) and var.is_cuda:
             print(f"{var_name}: {var.element_size() * var.nelement() / 1024**2:.2f} MB")
-
-    
 #############################################################
 
 #############################################################
@@ -146,73 +144,12 @@ batch_size = 50 # Set the batch size for training and validation
 USER = os.environ['USER']  # username
 
 # platform-dependent variables
-if USER=='uvb28bo': # Jean Zay
-    # work_dir = os.environ['WORK']
-    # DATAROOT = f'{work_dir}/DeepLearningDatasets' 
-    # DATAROOT = f'{os.environ['SCRATCH']}/data'
-    DATAROOT = f'/lustre/fsn1/projects/rech/fsx/uvb28bo/data' 
-    # num_workers = 16 # on H100
-    num_workers = 8 # on V100
-    print(f'Running on Jean Zay with {torch.cuda.get_device_name()} with {DATAROOT=} and {USER=} ')
-# elif '.cluster' in HOST: # mesocentre
-#     DATAROOT = '/scratch/lperrinet/science/Deep_learning/data'
-#     num_workers = 8
-elif 'm-gpu' in HOST: # MESONET
-    DATAROOT = 'data'
-    num_workers = 16
-elif 'gaia' in HOST: # MAC STUDIO
-    DATAROOT = '/Volumes/SSD1TO/DeepLearningDatasets'
-    DATAROOT = 'data'
-    batch_size = 512 # Set the batch size for training and validation
-    num_workers = 2
-
-# elif HOST in ['babbage']: # 
-#     DATAROOT = '/data/Deep_learning/data'
-#     num_workers = 2
-# elif HOST in ['CONECT-LID-01']: # emmy
-#     # DATAROOT = '/envau/userspace/perrinet.l/data'
-#     DATAROOT = '/scratch/data'
-#     batch_size = 256
-#     num_workers = 8    
-# elif HOST in ['CONEC-LID-002']: # faraday
-#     # DATAROOT = '/envau/userspace/perrinet.l/data'
-#     DATAROOT = '/scratch/ImageNet'
-#     num_workers = 16    
-# elif HOST in ['inv-ope-de06', 'INV-133-DE01']: # CURIE , ada
-#     DATAROOT = '/data/JNJER/Deep_learning/data'
-#     num_workers = 2
-elif HOST in ['neo-ope-de04']: # Darwin  
+if HOST in ['neo-ope-de04']: # Darwin  
     DATAROOT = '/data/JNJER/Deep_learning/data'
     num_workers = 16
-# elif HOST in ['brain-lid-004']: # GPU manu  
-#     DATAROOT = '/data/JNJER/Deep_learning/data'
-#     num_workers = 16
-elif 'obiwan' in HOST: 
-#     # DATAROOT = '/Volumes/UnaTera/2023_archives/2023_science/JNJER_PhD/data'
-#     DATAROOT = '/Volumes/data/2024_archives/2024_science/Deep_learning/data'
-#     DATAROOT = '/Volumes/SSD1TO/ImageNet'
-#     DATAROOT = '/Volumes/SSD1TO/Deep_learning/ILSVRC2010_ImageNet'
-    DATAROOT = 'data'
-#     DATAROOT = '/Volumes/SSD1TO/DeepLearningDatasets'
-#     interpolation = T.InterpolationMode.NEAREST
-#     padding_mode = "reflection"
-    num_workers = 2
-elif 'Ahsoka' in HOST: 
-    DATAROOT = '/Volumes/backups/2023_archives/2023_science/JNJER_PhD/data'
-    DATAROOT = '/Volumes/data/2024_archives/2024_science/Deep_learning/data'
-    num_workers = 24
-    device = torch.device('cpu')
-elif 'DESKTOP-27VNO0E' in HOST: 
-    DATAROOT = 'd:\\Data'
-    batch_size = 50
-    num_workers = 8
-elif 'Newton' in HOST: 
-    if os.path.isdir('/media/jnjer/Transcend/Data'):
-        DATAROOT = '/media/jnjer/Transcend/Data'
-    else:
-        DATAROOT = 'c:\\Users\\JnJer\\Nextcloud\\JNJER_PhD\\data'
-    batch_size = 50
-    num_workers = 4
+elif HOST in ['my-machine']: # Darwin  
+    DATAROOT = '/my/data/path'
+    num_workers = 16 # optimized with `09_benchmark-dataloader.ipynb`
 elif 'port-dauce' in HOST:
     import subprocess
     mount_point = os.path.expanduser("~/data")
