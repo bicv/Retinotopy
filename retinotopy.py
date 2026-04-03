@@ -14,13 +14,8 @@ import math
 import time
 from time import strftime, gmtime
 datetag = strftime("%Y-%m-%d", gmtime())
-#datetag = '2024-05-24'
-# datetag = '2025-01-05'
-datetag = '2025-03-06' # Jean Zay
-datetag = '2025-05-08' # Jean Zay
-datetag = '2025-06-20' # Jean Zay
-datetag = '2025-11-21' # Jean Zay
-
+# datetag = '2024-05-24'
+# datetag = 'YYYY-MM-DD' # the date in ISO8601 is recommended
 #############################################################
 
 #############################################################
